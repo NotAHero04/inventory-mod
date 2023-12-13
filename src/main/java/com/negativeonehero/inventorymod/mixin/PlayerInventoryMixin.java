@@ -21,7 +21,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Predicate;
@@ -69,7 +68,8 @@ public abstract class PlayerInventoryMixin implements Inventory {
                 return i + 41;
             }
         }
-        return -1;
+        this.mainExtras.add(ItemStack.EMPTY);
+        return 40 + this.mainExtras.size();
     }
 
     /**
@@ -231,11 +231,8 @@ public abstract class PlayerInventoryMixin implements Inventory {
         if (i == -1) {
             i = this.getEmptySlot();
         }
-        if (i == -1) {
-            this.mainExtras.add(ItemStack.EMPTY);
-            return 40 + this.mainExtras.size();
-        }
-        return this.addStack(i, stack);
+
+        return i == -1 ? stack.getCount() : this.addStack(i, stack);
     }
 
     /**

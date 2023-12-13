@@ -9,15 +9,10 @@ import org.spongepowered.asm.mixin.Unique;
 @Mixin(Item.class)
 public class ItemMixin {
 
-    @Shadow
-    private int maxCount;
-
     /**
      * @author
      * @reason
      */
     @Overwrite
-    public final int getMaxCount() {
-        return Integer.MAX_VALUE;
-    }
+    public final int getMaxCount() { return Integer.MAX_VALUE; }
 }
