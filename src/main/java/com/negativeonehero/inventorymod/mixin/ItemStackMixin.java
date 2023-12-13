@@ -1,0 +1,57 @@
+package com.negativeonehero.inventorymod.mixin;
+
+import net.minecraft.client.item.TooltipContext;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.text.MutableText;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
+import org.jetbrains.annotations.Nullable;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import java.text.NumberFormat;
+import java.util.List;
+import java.util.Locale;
+
+@Mixin(ItemStack.class)
+public abstract class ItemStackMixin {
+    @Shadow
+    private int count;
+    @Shadow
+    public abstract int getCount();
+
+    @Inject(at = @At("TAIL"), method = "<init>(Lnet/minecraft/nbt/NbtCompound;)V")
+    void onDeserialization(NbtCompound tag, CallbackInfo callbackInformation) {
+        if (tag.contains("CountInteger")) {
+            this.count = tag.getInt("CountInteger");
+        }
+    }
+
+    @Inject(at = @At ("TAIL"), method = "writeNbt")
+    void onSerialization(NbtCompound tag, CallbackInfoReturnable<NbtCompound> callbackInformationReturnable) {
+        if (this.count > Byte.MAX_VALUE) {
+            tag.putInt("CountInteger", this.count);
+            tag.putByte("Count", Byte.MAX_VALUE);
+        }
+    }
+
+    @Inject(method = "getTooltip", at = @At ("RETURN"))
+    private void addOverflowTooltip(PlayerEntity player, TooltipContext context, CallbackInfoReturnable<List<Text>> cir) {
+        if (this.getCount() > 1000) {
+            List<Text> texts = cir.getReturnValue();
+            MutableText text = (MutableText) texts.get(0);
+            texts.set(0, text.append(Text.literal(" x").formatted(Formatting.GRAY))
+                    .append(Text.literal(NumberFormat.getNumberInstance(Locale.US).format(this.getCount())).formatted(Formatting.GRAY)));
+        }
+    }
+}

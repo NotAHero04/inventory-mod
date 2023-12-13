@@ -1,0 +1,21 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.negativeonehero.inventorymod.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "GiveCommandMixin",
+    "InventoryMixin",
+    "ItemMixin",
+    "ItemStackMixin",
+    "PlayerInventoryMixin",
+    "ScreenHandlerMixin",
+    "ServerPlayNetworkHandlerMixin"
+  ],
+  "client": [
+    "DrawContextMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "inventorymod",
+  "version": "${version}",
+  "name": "inventorymod",
+  "description": "",
+  "authors": [],
+  "contact": {
+    "repo": "https://github.com/laptop/inventorymod"
+  },
+  "license": "MIT",
+  "icon": "assets/inventorymod/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "client": [
+      "com.negativeonehero.inventorymod.client.InventoryModClient"
+    ],
+    "main": [
+      "com.negativeonehero.inventorymod.InventoryMod"
+    ]
+  },
+  "mixins": [
+    "inventorymod.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
