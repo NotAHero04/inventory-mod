@@ -21,6 +21,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 import java.util.function.Predicate;
 
 @Mixin(PlayerInventory.class)
@@ -38,6 +41,8 @@ public abstract class PlayerInventoryMixin implements Inventory {
     @Shadow
     public int selectedSlot;
     @Shadow
+    private List<DefaultedList<ItemStack>> combinedInventory;
+    @Shadow
     abstract boolean canStackAddMore(ItemStack existingStack, ItemStack stack);
     @Shadow
     abstract int addStack(int slot, ItemStack stack);
@@ -45,7 +50,7 @@ public abstract class PlayerInventoryMixin implements Inventory {
 
     @Inject(method = "<init>", at = @At("TAIL"))
     public void constructor(CallbackInfo ci) {
-        this.mainExtras = new ArrayList<>(0);
+        this.mainExtras = new ArrayList<>();
     }
 
     /**
@@ -64,8 +69,32 @@ public abstract class PlayerInventoryMixin implements Inventory {
                 return i + 41;
             }
         }
-
         return -1;
+    }
+
+    /**
+     * @author
+     * @reason
+     */
+    @Overwrite
+    public void setStack(int slot, ItemStack stack) {
+        DefaultedList<ItemStack> defaultedList = null;
+
+        DefaultedList<ItemStack> defaultedList2;
+        for(Iterator<DefaultedList<ItemStack>> var4 = this.combinedInventory.iterator(); var4.hasNext(); slot -= defaultedList2.size()) {
+            defaultedList2 = var4.next();
+            if (slot < defaultedList2.size()) {
+                defaultedList = defaultedList2;
+                break;
+            }
+        }
+
+        if (defaultedList != null) {
+            defaultedList.set(slot, stack);
+        } else {
+            this.mainExtras.set(slot, stack);
+        }
+
     }
 
     /**
@@ -124,6 +153,7 @@ public abstract class PlayerInventoryMixin implements Inventory {
         this.main.clear();
         this.armor.clear();
         this.offHand.clear();
+        this.mainExtras.clear();
 
         for (int i = 0; i < nbtList.size(); ++i) {
             NbtCompound nbtCompound = nbtList.getCompound(i);
@@ -201,8 +231,29 @@ public abstract class PlayerInventoryMixin implements Inventory {
         if (i == -1) {
             i = this.getEmptySlot();
         }
+        if (i == -1) {
+            this.mainExtras.add(ItemStack.EMPTY);
+            return 40 + this.mainExtras.size();
+        }
+        return this.addStack(i, stack);
+    }
 
-        return i == -1 ? stack.getCount() : this.addStack(i, stack);
+    /**
+     * @author
+     * @reason
+     */
+    @Overwrite
+    public ItemStack getStack(int slot) {
+        List<ItemStack> list = null;
+        DefaultedList<ItemStack> defaultedList;
+        for(Iterator<DefaultedList<ItemStack>> var3 = this.combinedInventory.iterator(); var3.hasNext(); slot -= defaultedList.size()) {
+            defaultedList = var3.next();
+            if (slot < defaultedList.size()) {
+                list = defaultedList;
+                break;
+            }
+        }
+        return list == null ? this.mainExtras.get(slot) : list.get(slot);
     }
 
     /**
@@ -217,8 +268,8 @@ public abstract class PlayerInventoryMixin implements Inventory {
             try {
                 if (stack.isDamaged()) {
                     if (slot == -1) {
+                        slot = this.getEmptySlot();
                     }
-                    System.out.println(slot);
                     if (slot >= 0 && slot < 36) {
                         this.main.set(slot, stack.copyAndEmpty());
                         this.main.get(slot).setBobbingAnimationTime(5);

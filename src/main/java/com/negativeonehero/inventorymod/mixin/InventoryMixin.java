@@ -14,6 +14,6 @@ public interface InventoryMixin {
      */
     @Overwrite
     default int getMaxCountPerStack() {
-        return 64;
+        return Integer.MAX_VALUE;
     }
 }
