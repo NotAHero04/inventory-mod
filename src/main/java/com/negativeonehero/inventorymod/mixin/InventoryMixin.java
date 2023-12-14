@@ -3,7 +3,6 @@ package com.negativeonehero.inventorymod.mixin;
 import net.minecraft.inventory.Inventory;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
-import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(Inventory.class)
 public interface InventoryMixin {
@@ -14,6 +13,6 @@ public interface InventoryMixin {
      */
     @Overwrite
     default int getMaxCountPerStack() {
-        return Integer.MAX_VALUE;
+        return 64;
     }
 }

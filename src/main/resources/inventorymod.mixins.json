@@ -13,7 +13,8 @@
     "ServerPlayNetworkHandlerMixin"
   ],
   "client": [
-    "DrawContextMixin"
+    "DrawContextMixin",
+    "HandledScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

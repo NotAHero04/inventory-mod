@@ -1,5 +1,7 @@
 package com.negativeonehero.inventorymod.mixin;
 
+import com.negativeonehero.inventorymod.ExtendableDefaultedList;
+import com.negativeonehero.inventorymod.impl.IPlayerInventory;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventories;
@@ -12,21 +14,17 @@ import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.crash.CrashException;
 import net.minecraft.util.crash.CrashReport;
 import net.minecraft.util.crash.CrashReportSection;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
-import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Predicate;
 
 @Mixin(PlayerInventory.class)
-public abstract class PlayerInventoryMixin implements Inventory {
+public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventory {
     @Shadow
     public DefaultedList<ItemStack> main;
     @Shadow
@@ -34,12 +32,13 @@ public abstract class PlayerInventoryMixin implements Inventory {
     @Shadow
     public DefaultedList<ItemStack> offHand;
     @Unique
-    public ArrayList<ItemStack> mainExtras;
+    public ExtendableDefaultedList<ItemStack> mainExtras;
     @Shadow
     public PlayerEntity player;
     @Shadow
     public int selectedSlot;
     @Shadow
+    @Mutable
     private List<DefaultedList<ItemStack>> combinedInventory;
     @Shadow
     abstract boolean canStackAddMore(ItemStack existingStack, ItemStack stack);
@@ -49,7 +48,8 @@ public abstract class PlayerInventoryMixin implements Inventory {
 
     @Inject(method = "<init>", at = @At("TAIL"))
     public void constructor(CallbackInfo ci) {
-        this.mainExtras = new ArrayList<>();
+        this.mainExtras = ExtendableDefaultedList.ofSize(1, ItemStack.EMPTY);
+        this.combinedInventory = List.of(this.main, this.armor, this.offHand, this.mainExtras);
     }
 
     /**
@@ -320,4 +320,10 @@ public abstract class PlayerInventoryMixin implements Inventory {
     public int size() {
         return this.main.size() + this.armor.size() + this.offHand.size() + this.mainExtras.size();
     }
+
+    @Override
+    public DefaultedList<ItemStack> getExtraInventory() {
+        return this.combinedInventory.get(3);
+    }
+
 }
