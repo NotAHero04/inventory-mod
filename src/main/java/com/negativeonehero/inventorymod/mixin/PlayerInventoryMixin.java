@@ -1,6 +1,5 @@
 package com.negativeonehero.inventorymod.mixin;
 
-import com.negativeonehero.inventorymod.ExtendableDefaultedList;
 import com.negativeonehero.inventorymod.impl.IPlayerInventory;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
@@ -19,6 +18,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Predicate;
@@ -32,13 +32,12 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     @Shadow
     public DefaultedList<ItemStack> offHand;
     @Unique
-    public ExtendableDefaultedList<ItemStack> mainExtras;
+    public ArrayList<ItemStack> mainExtras;
     @Shadow
     public PlayerEntity player;
     @Shadow
     public int selectedSlot;
     @Shadow
-    @Mutable
     private List<DefaultedList<ItemStack>> combinedInventory;
     @Shadow
     abstract boolean canStackAddMore(ItemStack existingStack, ItemStack stack);
@@ -48,8 +47,7 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
 
     @Inject(method = "<init>", at = @At("TAIL"))
     public void constructor(CallbackInfo ci) {
-        this.mainExtras = ExtendableDefaultedList.ofSize(1, ItemStack.EMPTY);
-        this.combinedInventory = List.of(this.main, this.armor, this.offHand, this.mainExtras);
+        this.mainExtras = new ArrayList<>();
     }
 
     /**
@@ -322,8 +320,8 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     }
 
     @Override
-    public DefaultedList<ItemStack> getExtraInventory() {
-        return this.combinedInventory.get(3);
+    public ArrayList<ItemStack> getExtraInventory() {
+        return this.mainExtras;
     }
 
 }
