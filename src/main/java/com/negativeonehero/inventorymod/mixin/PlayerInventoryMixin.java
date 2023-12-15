@@ -173,8 +173,8 @@ public abstract class PlayerInventoryMixin implements Inventory {
     public int getOccupiedSlotWithRoomForStack(ItemStack stack) {
         if (this.canStackAddMore(this.getStack(this.selectedSlot), stack)) {
             return this.selectedSlot;
-        } else if (this.canStackAddMore(this.getStack(0), stack)) {
-            return 0;
+        } else if (this.canStackAddMore(this.getStack(40), stack)) {
+            return 40;
         } else {
             for(int i = 0; i < this.main.size(); ++i) {
                 if (this.canStackAddMore(this.main.get(i), stack)) {
