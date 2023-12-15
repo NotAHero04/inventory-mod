@@ -1,6 +1,7 @@
 package com.negativeonehero.inventorymod.mixin;
 
-import com.negativeonehero.inventorymod.impl.IPlayerInventory;
+import com.google.common.collect.ImmutableList;
+import com.negativeonehero.inventorymod.ExtendableDefaultedList;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventories;
@@ -18,36 +19,52 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.function.Predicate;
 
 @Mixin(PlayerInventory.class)
-public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventory {
+public abstract class PlayerInventoryMixin implements Inventory {
+    @Final
     @Shadow
+    @Mutable
     public DefaultedList<ItemStack> main;
+    @Final
     @Shadow
     public DefaultedList<ItemStack> armor;
+    @Final
     @Shadow
     public DefaultedList<ItemStack> offHand;
-    @Unique
-    public ArrayList<ItemStack> mainExtras;
+    @Final
     @Shadow
     public PlayerEntity player;
     @Shadow
     public int selectedSlot;
     @Shadow
-    private List<DefaultedList<ItemStack>> combinedInventory;
+    protected abstract boolean canStackAddMore(ItemStack existingStack, ItemStack stack);
     @Shadow
-    abstract boolean canStackAddMore(ItemStack existingStack, ItemStack stack);
-    @Shadow
-    abstract int addStack(int slot, ItemStack stack);
+    protected abstract int addStack(int slot, ItemStack stack);
 
+    @Shadow @Final @Mutable private List<DefaultedList<ItemStack>> combinedInventory;
 
-    @Inject(method = "<init>", at = @At("TAIL"))
-    public void constructor(CallbackInfo ci) {
-        this.mainExtras = new ArrayList<>();
+    @Inject(method = "<init>", at = @At(value = "TAIL"))
+    public void constructor(PlayerEntity player, CallbackInfo ci) {
+        this.main = ExtendableDefaultedList.ofSize(36, ItemStack.EMPTY);
+        this.combinedInventory = ImmutableList.of(this.main, this.armor, this.offHand);
+    }
+
+    // The inventory is rearranged for extra slots in the `main` part
+    // Slot 0-35 and 41+ is for main
+    // Slot 36-39 is for armor
+    // Slot 40 is for off-hand
+
+    @Unique
+    public int invSlotFromMain(int mainSlot) {
+        return mainSlot + (mainSlot > 35 ? 5 : 0);
+    }
+
+    @Unique
+    public int mainSlotFromInv(int invSlot) {
+        return invSlot - (invSlot > 35 ? 5 : 0);
     }
 
     /**
@@ -58,16 +75,11 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     public int getEmptySlot() {
         for(int i = 0; i < this.main.size(); ++i) {
             if (this.main.get(i).isEmpty()) {
-                return i;
+                return invSlotFromMain(i);
             }
         }
-        for(int i = 0; i < this.mainExtras.size(); ++i) {
-            if (this.mainExtras.get(i).isEmpty()) {
-                return i + 41;
-            }
-        }
-        this.mainExtras.add(ItemStack.EMPTY);
-        return 40 + this.mainExtras.size();
+        this.main.add(ItemStack.EMPTY);
+        return this.main.size() + 4;
     }
 
     /**
@@ -76,23 +88,11 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
      */
     @Overwrite
     public void setStack(int slot, ItemStack stack) {
-        DefaultedList<ItemStack> defaultedList = null;
-
-        DefaultedList<ItemStack> defaultedList2;
-        for(Iterator<DefaultedList<ItemStack>> var4 = this.combinedInventory.iterator(); var4.hasNext(); slot -= defaultedList2.size()) {
-            defaultedList2 = var4.next();
-            if (slot < defaultedList2.size()) {
-                defaultedList = defaultedList2;
-                break;
-            }
-        }
-
-        if (defaultedList != null) {
-            defaultedList.set(slot, stack);
-        } else {
-            this.mainExtras.set(slot, stack);
-        }
-
+        System.out.printf("Set slot %d to %s", slot, stack);
+        // The OG method avoids using conditionals
+        if(slot == 40) this.offHand.set(0, stack);
+        else if(slot >= 36 && slot < 40) this.armor.set(slot - 36, stack);
+        else this.main.set(mainSlotFromInv(slot), stack);
     }
 
     /**
@@ -101,12 +101,14 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
      */
     @Overwrite
     public NbtList writeNbt(NbtList nbtList) {
+        // Also write old slots
         int i;
         NbtCompound nbtCompound;
         for(i = 0; i < this.main.size(); ++i) {
             if (!this.main.get(i).isEmpty()) {
                 nbtCompound = new NbtCompound();
-                nbtCompound.putInt("Slot", i);
+                if (i < 36) nbtCompound.putInt("Slot", i);
+                nbtCompound.putInt("NewSlot", invSlotFromMain(i));
                 this.main.get(i).writeNbt(nbtCompound);
                 nbtList.add(nbtCompound);
             }
@@ -116,6 +118,7 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
             if (!this.armor.get(i).isEmpty()) {
                 nbtCompound = new NbtCompound();
                 nbtCompound.putInt("Slot", i + 36);
+                nbtCompound.putInt("NewSlot", i + 36);
                 this.armor.get(i).writeNbt(nbtCompound);
                 nbtList.add(nbtCompound);
             }
@@ -125,16 +128,8 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
             if (!this.offHand.get(i).isEmpty()) {
                 nbtCompound = new NbtCompound();
                 nbtCompound.putInt("Slot", i + 40);
+                nbtCompound.putInt("NewSlot", i + 40);
                 this.offHand.get(i).writeNbt(nbtCompound);
-                nbtList.add(nbtCompound);
-            }
-        }
-
-        for(i = 0; i < this.mainExtras.size(); ++i) {
-            if(!this.mainExtras.get(i).isEmpty()) {
-                nbtCompound = new NbtCompound();
-                nbtCompound.putInt("Slot", i + 41);
-                this.mainExtras.get(i).writeNbt(nbtCompound);
                 nbtList.add(nbtCompound);
             }
         }
@@ -151,25 +146,23 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
         this.main.clear();
         this.armor.clear();
         this.offHand.clear();
-        this.mainExtras.clear();
 
         for (int i = 0; i < nbtList.size(); ++i) {
             NbtCompound nbtCompound = nbtList.getCompound(i);
-            int j = nbtCompound.getInt("Slot");
+            int j = nbtCompound.getInt("NewSlot");
             ItemStack itemStack = ItemStack.fromNbt(nbtCompound);
             if (!itemStack.isEmpty()) {
-                if (j >= 0 && j < this.main.size()) {
-                    this.main.set(j, itemStack);
+                if (j >= 40 && j < this.offHand.size() + 40) {
+                    this.offHand.set(0, itemStack);
                 } else if (j >= 36 && j < this.armor.size() + 36) {
-                    this.armor.set(j - 36, itemStack);
-                } else if (j >= 40 && j < this.offHand.size() + 40) {
-                    this.offHand.set(j - 40, itemStack);
-                } else {
-                    this.mainExtras.add(itemStack);
-                }
+                    this.armor.set(j - 1, itemStack);
+                } else if (j < 35) {
+                    this.main.set(j, itemStack);
+                } else this.main.add(itemStack);
             }
         }
     }
+
 
     /**
      * @author
@@ -180,17 +173,12 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     public int getOccupiedSlotWithRoomForStack(ItemStack stack) {
         if (this.canStackAddMore(this.getStack(this.selectedSlot), stack)) {
             return this.selectedSlot;
-        } else if (this.canStackAddMore(this.getStack(40), stack)) {
-            return 40;
+        } else if (this.canStackAddMore(this.getStack(0), stack)) {
+            return 0;
         } else {
             for(int i = 0; i < this.main.size(); ++i) {
                 if (this.canStackAddMore(this.main.get(i), stack)) {
-                    return i;
-                }
-            }
-            for(int i = 0; i < this.mainExtras.size(); ++i) {
-                if (this.canStackAddMore(this.mainExtras.get(i), stack)) {
-                    return i + 41;
+                    return invSlotFromMain(i);
                 }
             }
 
@@ -208,8 +196,6 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
         boolean bl = maxCount == 0;
         i += Inventories.remove(this, shouldRemove, maxCount - i, bl);
         i += Inventories.remove(craftingInventory, shouldRemove, maxCount - i, bl);
-        for(ItemStack stack : this.mainExtras)
-            i += Inventories.remove(stack, shouldRemove, maxCount - i, bl);
         ItemStack itemStack = this.player.currentScreenHandler.getCursorStack();
         i += Inventories.remove(itemStack, shouldRemove, maxCount - i, bl);
         if (itemStack.isEmpty()) {
@@ -239,16 +225,9 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
      */
     @Overwrite
     public ItemStack getStack(int slot) {
-        List<ItemStack> list = null;
-        DefaultedList<ItemStack> defaultedList;
-        for(Iterator<DefaultedList<ItemStack>> var3 = this.combinedInventory.iterator(); var3.hasNext(); slot -= defaultedList.size()) {
-            defaultedList = var3.next();
-            if (slot < defaultedList.size()) {
-                list = defaultedList;
-                break;
-            }
-        }
-        return list == null ? this.mainExtras.get(slot) : list.get(slot);
+        if(slot == 40) return this.offHand.get(0);
+        if(slot >= 36 && slot < 40) return this.armor.get(slot - 36);
+        return this.main.get(mainSlotFromInv(slot));
     }
 
     /**
@@ -265,15 +244,11 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
                     if (slot == -1) {
                         slot = this.getEmptySlot();
                     }
-                    if (slot >= 0 && slot < 36) {
-                        this.main.set(slot, stack.copyAndEmpty());
-                        this.main.get(slot).setBobbingAnimationTime(5);
+                    if (slot <= 35 || slot >= 41) {
+                        this.main.set(mainSlotFromInv(slot), stack.copyAndEmpty());
+                        this.main.get(mainSlotFromInv(slot)).setBobbingAnimationTime(5);
                         return true;
-                    } else if (slot >= 41) {
-                        this.mainExtras.set(slot, stack.copyAndEmpty());
-                        this.mainExtras.get(slot).setBobbingAnimationTime(5);
-                        return true;
-                    }  else if (this.player.getAbilities().creativeMode) {
+                    } else if (this.player.getAbilities().creativeMode) {
                         stack.setCount(0);
                         return true;
                     } else {
@@ -302,9 +277,7 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
                 CrashReportSection crashReportSection = crashReport.addElement("Item being added");
                 crashReportSection.add("Item ID", Item.getRawId(stack.getItem()));
                 crashReportSection.add("Item data", stack.getDamage());
-                crashReportSection.add("Item name", () -> {
-                    return stack.getName().getString();
-                });
+                crashReportSection.add("Item name", () -> stack.getName().getString());
                 throw new CrashException(crashReport);
             }
         }
@@ -316,12 +289,6 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
      */
     @Overwrite
     public int size() {
-        return this.main.size() + this.armor.size() + this.offHand.size() + this.mainExtras.size();
+        return this.main.size() + this.armor.size() + this.offHand.size();
     }
-
-    @Override
-    public ArrayList<ItemStack> getExtraInventory() {
-        return this.mainExtras;
-    }
-
 }

@@ -10,6 +10,6 @@ public class InventoryMod implements ModInitializer {
 		// However, some things (like resources) may still be uninitialized.
 		// Proceed with mild caution.
 
-		System.getLogger("Inventory Mod").log(System.Logger.Level.INFO,"Inventory Mod 0.9.0-alpha.1 loading...");
+		System.getLogger("Inventory Mod").log(System.Logger.Level.INFO,"Inventory Mod 0.9.0-alpha.2 loading...");
 	}
 }
