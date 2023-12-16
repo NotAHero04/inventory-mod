@@ -1,7 +1,8 @@
 package com.negativeonehero.inventorymod.mixin;
 
 import com.google.common.collect.ImmutableList;
-import com.negativeonehero.inventorymod.ExtendableDefaultedList;
+import com.negativeonehero.inventorymod.ExtendableItemStackDefaultedList;
+import com.negativeonehero.inventorymod.impl.IPlayerInventory;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventories;
@@ -23,7 +24,7 @@ import java.util.List;
 import java.util.function.Predicate;
 
 @Mixin(PlayerInventory.class)
-public abstract class PlayerInventoryMixin implements Inventory {
+public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventory {
     @Final
     @Shadow
     @Mutable
@@ -48,7 +49,7 @@ public abstract class PlayerInventoryMixin implements Inventory {
 
     @Inject(method = "<init>", at = @At(value = "TAIL"))
     public void constructor(PlayerEntity player, CallbackInfo ci) {
-        this.main = ExtendableDefaultedList.ofSize(36, ItemStack.EMPTY);
+        this.main = ExtendableItemStackDefaultedList.ofSize(36, ItemStack.EMPTY);
         this.combinedInventory = ImmutableList.of(this.main, this.armor, this.offHand);
     }
 
@@ -78,8 +79,9 @@ public abstract class PlayerInventoryMixin implements Inventory {
                 return invSlotFromMain(i);
             }
         }
-        this.main.add(ItemStack.EMPTY);
-        return this.main.size() + 4;
+        // Add 9 slots at a time
+        for(int i = 0; i < 9; i++) this.main.add(ItemStack.EMPTY);
+        return this.main.size() - 4;
     }
 
     /**
@@ -88,7 +90,6 @@ public abstract class PlayerInventoryMixin implements Inventory {
      */
     @Overwrite
     public void setStack(int slot, ItemStack stack) {
-        System.out.printf("Set slot %d to %s", slot, stack);
         // The OG method avoids using conditionals
         if(slot == 40) this.offHand.set(0, stack);
         else if(slot >= 36 && slot < 40) this.armor.set(slot - 36, stack);
@@ -291,4 +292,7 @@ public abstract class PlayerInventoryMixin implements Inventory {
     public int size() {
         return this.main.size() + this.armor.size() + this.offHand.size();
     }
+
+    @Unique
+    public DefaultedList<ItemStack> getMainInventory() { return this.main; }
 }

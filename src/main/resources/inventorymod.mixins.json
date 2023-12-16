@@ -9,6 +9,7 @@
     "ItemMixin",
     "ItemStackMixin",
     "PlayerInventoryMixin",
+    "PlayerScreenHandlerMixin",
     "ScreenHandlerMixin",
     "ServerPlayNetworkHandlerMixin"
   ],

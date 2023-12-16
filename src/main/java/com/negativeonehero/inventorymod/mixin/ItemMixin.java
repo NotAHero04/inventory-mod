@@ -12,5 +12,5 @@ public class ItemMixin {
      * @reason
      */
     @Overwrite
-    public final int getMaxCount() { return 64; }
+    public final int getMaxCount() { return Integer.MAX_VALUE; }
 }
