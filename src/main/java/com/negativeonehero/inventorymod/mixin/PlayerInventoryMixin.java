@@ -102,14 +102,12 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
      */
     @Overwrite
     public NbtList writeNbt(NbtList nbtList) {
-        // Also write old slots
         int i;
         NbtCompound nbtCompound;
         for(i = 0; i < this.main.size(); ++i) {
             if (!this.main.get(i).isEmpty()) {
                 nbtCompound = new NbtCompound();
-                if (i < 36) nbtCompound.putInt("Slot", i);
-                nbtCompound.putInt("NewSlot", invSlotFromMain(i));
+                nbtCompound.putInt("Slot", invSlotFromMain(i));
                 this.main.get(i).writeNbt(nbtCompound);
                 nbtList.add(nbtCompound);
             }
@@ -119,7 +117,6 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
             if (!this.armor.get(i).isEmpty()) {
                 nbtCompound = new NbtCompound();
                 nbtCompound.putInt("Slot", i + 36);
-                nbtCompound.putInt("NewSlot", i + 36);
                 this.armor.get(i).writeNbt(nbtCompound);
                 nbtList.add(nbtCompound);
             }
@@ -128,8 +125,7 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
         for(i = 0; i < this.offHand.size(); ++i) {
             if (!this.offHand.get(i).isEmpty()) {
                 nbtCompound = new NbtCompound();
-                nbtCompound.putInt("Slot", i + 40);
-                nbtCompound.putInt("NewSlot", i + 40);
+                nbtCompound.putInt("Slot", i + 40);;
                 this.offHand.get(i).writeNbt(nbtCompound);
                 nbtList.add(nbtCompound);
             }
@@ -150,20 +146,19 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
 
         for (int i = 0; i < nbtList.size(); ++i) {
             NbtCompound nbtCompound = nbtList.getCompound(i);
-            int j = nbtCompound.getInt("NewSlot");
+            int j = nbtCompound.getInt("Slot");
             ItemStack itemStack = ItemStack.fromNbt(nbtCompound);
             if (!itemStack.isEmpty()) {
                 if (j >= 40 && j < this.offHand.size() + 40) {
                     this.offHand.set(0, itemStack);
                 } else if (j >= 36 && j < this.armor.size() + 36) {
-                    this.armor.set(j - 1, itemStack);
-                } else if (j < 35) {
+                    this.armor.set(j - 36, itemStack);
+                } else if (j >= 0 && j < 36) {
                     this.main.set(j, itemStack);
                 } else this.main.add(itemStack);
             }
         }
     }
-
 
     /**
      * @author

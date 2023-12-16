@@ -1,7 +1,6 @@
 package com.negativeonehero.inventorymod.mixin;
 
 import com.negativeonehero.inventorymod.ExtendedSlot;
-import com.negativeonehero.inventorymod.impl.IPlayerInventory;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
@@ -19,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen {
 
     @Unique
-    private IPlayerInventory inventory;
+    private PlayerInventory inventory;
 
     protected HandledScreenMixin(Text title) {
         super(title);
@@ -27,12 +26,12 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
 
     @Inject(method = "<init>", at = @At(value = "TAIL"))
     public void constructor(ScreenHandler handler, PlayerInventory inventory, Text title, CallbackInfo ci) {
-        this.inventory = (IPlayerInventory) inventory;
+        this.inventory = inventory;
     }
 
     @Inject(method = "init", at = @At(value = "TAIL"))
     public void init(CallbackInfo ci) {
-        System.out.println(this.inventory.getMainInventory());
+
     }
 
     @Inject(method = "drawSlot", at = @At(value = "HEAD"), cancellable = true)

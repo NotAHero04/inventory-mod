@@ -8,8 +8,8 @@
     "InventoryMixin",
     "ItemMixin",
     "ItemStackMixin",
+    "PacketByteBufMixin",
     "PlayerInventoryMixin",
-    "PlayerScreenHandlerMixin",
     "ScreenHandlerMixin",
     "ServerPlayNetworkHandlerMixin"
   ],
