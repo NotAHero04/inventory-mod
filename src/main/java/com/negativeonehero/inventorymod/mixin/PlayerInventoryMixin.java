@@ -283,8 +283,8 @@ public abstract class PlayerInventoryMixin implements Inventory {
 
     // A very hacky way to force the inventory to always sync
     @Inject(method = "updateItems", at = @At(value = "TAIL"))
-    public void updateItems(CallbackInfo ci) {
-        if(this.needsToSync && this.player instanceof ServerPlayerEntity) {
+    public void syncInventories(CallbackInfo ci) {
+        if(this.needsToSync) {
             MinecraftClient.getInstance().player.getInventory().main = this.main;
             this.needsToSync = false;
         }
