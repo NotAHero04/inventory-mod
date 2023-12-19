@@ -4,13 +4,11 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.TextWidget;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.text.Text;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -20,6 +18,12 @@ import java.util.ArrayList;
 @Mixin(HandledScreen.class)
 public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen {
 
+    @Shadow @Final
+    protected T handler;
+    @Shadow
+    protected int backgroundWidth;
+    @Shadow
+    protected int backgroundHeight;
     @Unique
     private PlayerInventory inventory;
 
@@ -28,7 +32,7 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
     @Unique
     private ButtonWidget nextButton;
     @Unique
-    private TextWidget pageText;
+    private ButtonWidget pageText;
     @Unique
     private int page = 1;
 
@@ -57,55 +61,75 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
                 .size(16, 16).tooltip(Tooltip.of(Text.of("Page " + (page + 1))))
                 .build();
         this.addDrawableChild(this.nextButton);
-        this.pageText = new TextWidget(26, 11, 40, 16, Text.of("Page " + page), this.textRenderer);
+        this.pageText = ButtonWidget.builder(Text.of("Page " + page), button -> {
+            this.cleanInventory();
+        })
+                .position(26, 10)
+                .size(60, 16).tooltip(Tooltip.of(Text.of("Click to clean inventory")))
+                .build();
         this.addDrawableChild(this.pageText);
-        this.previousButton.visible = false;
-        this.nextButton.visible = true;
+        this.previousButton.visible = this.page > 1;
         this.pageText.visible = true;
+        this.nextButton.visible = this.page < this.inventory.size() / 27;
+    }
+
+    @Unique
+    public void cleanInventory() {
+        for(int i = this.inventory.main.size() - 1; i > 0; i--) {
+            ItemStack stack = this.inventory.removeStack(i);
+            this.inventory.insertStack(-1, stack);
+        }
     }
 
     @Unique
     private void updateButtons(boolean next) {
         if(next) {
-            this.swapInventory(page);
+            if(this.page > 1) this.swapInventory(this.page);
             this.page++;
-            if(this.page >= 2) {
-                this.previousButton.visible = true;
-                if(this.page >= this.inventory.size() / 27 + 1) this.nextButton.visible = false;
-            }
+            this.previousButton.visible = true;
+            if(this.page >= this.inventory.size() / 27) this.nextButton.visible = false;
+            this.swapInventory(this.page);
         } else {
-            this.swapInventory(page);
+            this.swapInventory(this.page);
             this.page--;
-            if(this.page < this.inventory.size() / 27 + 1) {
+            if(this.page < this.inventory.size() / 27) {
                 this.nextButton.visible = true;
                 if(this.page <= 1) this.previousButton.visible = false;
+                else this.swapInventory(this.page);
             }
         }
-        this.swapInventory(page);
         this.previousButton.setTooltip(Tooltip.of(Text.of("Page " + (page - 1))));
         this.nextButton.setTooltip(Tooltip.of(Text.of("Page " + (page + 1))));
         this.pageText.setMessage(Text.of("Page " + page));
     }
 
+    @Inject(method = "removed", at = @At(value = "HEAD"))
+    public void resetInventory(CallbackInfo ci) {
+        this.swapInventory(this.page);
+    }
+
+    /**
+     * @author
+     * @reason
+     */
+    @Overwrite
+    public boolean isClickOutsideBounds(double mouseX, double mouseY, int left, int top, int button) {
+        boolean oldClickOutsideBounds = mouseX < (double)left || mouseY < (double)top
+                || mouseX >= (double)(left + this.backgroundWidth) || mouseY >= (double)(top + this.backgroundHeight);
+        boolean clickOutsideButtons = mouseX < 10 || mouseX > 82 || mouseY < 10 || mouseY > 26;
+        return oldClickOutsideBounds && clickOutsideButtons;
+    }
+
     @Unique
     public void swapInventory(int page) {
-        try {
-            // We can only go to page 1 from page 2
-            if(page == 1) this.swapInventory(2);
-            else {
-                int startIndex = 27 * page + 9;
-                ArrayList<ItemStack> stack;
-                try {
-                    stack = (ArrayList<ItemStack>) this.inventory.main.subList(startIndex, startIndex + 26);
-                } catch (IndexOutOfBoundsException e) {
-                    stack = (ArrayList<ItemStack>) this.inventory.main.subList(startIndex, this.inventory.main.size() - 1);
-                    while(stack.size() < 27) stack.add(ItemStack.EMPTY);
-                }
-                for(int i = 0; i < 27; i++) {
-                    this.inventory.main.set(startIndex + i, this.inventory.main.get(i + 9));
-                    this.inventory.main.set(i + 9, stack.get(i));
-                }
+        if(page > 1) {
+            int startIndex = 27 * (page - 1) + 9;
+            ArrayList<ItemStack> stack;
+            stack = new ArrayList<>(this.inventory.main.subList(startIndex, startIndex + 27));
+            for(int i = 0; i < 27; i++) {
+                this.inventory.setStack(startIndex + i + 5, this.inventory.getStack(i + 9));
+                this.inventory.setStack(i + 9, stack.get(i));
             }
-        } catch(IndexOutOfBoundsException ignored) {}
+        }
     }
 }

@@ -8,14 +8,15 @@
     "InventoryMixin",
     "ItemMixin",
     "ItemStackMixin",
-    "PacketByteBufMixin",
     "PlayerInventoryMixin",
     "ScreenHandlerMixin",
     "ServerPlayNetworkHandlerMixin"
   ],
   "client": [
+    "CreativeInventoryScreenMixin",
     "DrawContextMixin",
-    "HandledScreenMixin"
+    "HandledScreenMixin",
+    "InventoryScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

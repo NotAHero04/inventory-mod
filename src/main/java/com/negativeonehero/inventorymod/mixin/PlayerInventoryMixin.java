@@ -32,9 +32,11 @@ public abstract class PlayerInventoryMixin implements Inventory {
     public DefaultedList<ItemStack> main;
     @Final
     @Shadow
+    @Mutable
     public DefaultedList<ItemStack> armor;
     @Final
     @Shadow
+    @Mutable
     public DefaultedList<ItemStack> offHand;
     @Final
     @Shadow
@@ -83,8 +85,10 @@ public abstract class PlayerInventoryMixin implements Inventory {
                 return invSlotFromMain(i);
             }
         }
-        this.main.add(ItemStack.EMPTY);
-        return this.main.size() + 4;
+        // Add 27 stacks at once
+        for(int k = 0; k < 27; k++)
+            this.main.add(ItemStack.EMPTY);
+        return this.getEmptySlot();
     }
 
     /**
@@ -158,9 +162,12 @@ public abstract class PlayerInventoryMixin implements Inventory {
                     this.armor.set(j - 36, itemStack);
                 } else if (j >= 0 && j < 36) {
                     this.main.set(j, itemStack);
-                } else this.main.add(itemStack);
+                } else {
+                    this.main.add(itemStack);
+                }
             }
         }
+        while(this.main.size() % 27 != 9) this.main.add(ItemStack.EMPTY);
     }
 
     /**
@@ -283,9 +290,14 @@ public abstract class PlayerInventoryMixin implements Inventory {
 
     // A very hacky way to force the inventory to always sync
     @Inject(method = "updateItems", at = @At(value = "TAIL"))
-    public void syncInventories(CallbackInfo ci) {
-        if(this.needsToSync) {
+    public void syncInventories(CallbackInfo ci) throws InterruptedException {
+        if(this.needsToSync && this.player instanceof ServerPlayerEntity) {
+            // Fixes race condition upon rejoining a world... by simply waiting
+            while(MinecraftClient.getInstance().player == null) Thread.sleep(500);
             MinecraftClient.getInstance().player.getInventory().main = this.main;
+            MinecraftClient.getInstance().player.getInventory().armor = this.armor;
+            MinecraftClient.getInstance().player.getInventory().offHand = this.offHand;
+            MinecraftClient.getInstance().player.getInventory().combinedInventory = this.combinedInventory;
             this.needsToSync = false;
         }
     }
