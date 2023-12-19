@@ -18,14 +18,14 @@ public class ScreenHandlerMixin {
 
     @Final
     @Shadow
-    public final DefaultedList<Slot> slots = DefaultedList.of();
+    public DefaultedList<Slot> slots;
 
     /**
      * @author
      * @reason
      */
     @Overwrite
-    protected boolean insertItem(ItemStack stack, int startIndex, int endIndex, boolean fromLast) {
+    public boolean insertItem(ItemStack stack, int startIndex, int endIndex, boolean fromLast) {
         boolean bl = false;
         int i = startIndex;
         if (fromLast) {

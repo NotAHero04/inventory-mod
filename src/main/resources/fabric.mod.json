@@ -22,8 +22,9 @@
   "mixins": [
     "inventorymod.mixins.json"
   ],
+  "accessWidener" : "inventorymod.accesswidener",
   "depends": {
-    "fabricloader": ">=${loader_version}",
+    "fabricloader": ">=0.15.0",
     "fabric": "*",
     "minecraft": ">=1.20"
   }

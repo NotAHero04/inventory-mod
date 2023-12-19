@@ -2,7 +2,7 @@ package com.negativeonehero.inventorymod.mixin;
 
 import com.google.common.collect.ImmutableList;
 import com.negativeonehero.inventorymod.ExtendableItemStackDefaultedList;
-import com.negativeonehero.inventorymod.impl.IPlayerInventory;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventories;
@@ -11,6 +11,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.crash.CrashException;
 import net.minecraft.util.crash.CrashReport;
@@ -24,7 +25,7 @@ import java.util.List;
 import java.util.function.Predicate;
 
 @Mixin(PlayerInventory.class)
-public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventory {
+public abstract class PlayerInventoryMixin implements Inventory {
     @Final
     @Shadow
     @Mutable
@@ -44,8 +45,11 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     protected abstract boolean canStackAddMore(ItemStack existingStack, ItemStack stack);
     @Shadow
     protected abstract int addStack(int slot, ItemStack stack);
+    @Unique
+    private boolean needsToSync = true;
 
-    @Shadow @Final @Mutable private List<DefaultedList<ItemStack>> combinedInventory;
+    @Shadow @Final @Mutable
+    private List<DefaultedList<ItemStack>> combinedInventory;
 
     @Inject(method = "<init>", at = @At(value = "TAIL"))
     public void constructor(PlayerEntity player, CallbackInfo ci) {
@@ -79,9 +83,8 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
                 return invSlotFromMain(i);
             }
         }
-        // Add 9 slots at a time
-        for(int i = 0; i < 9; i++) this.main.add(ItemStack.EMPTY);
-        return this.main.size() - 4;
+        this.main.add(ItemStack.EMPTY);
+        return this.main.size() + 4;
     }
 
     /**
@@ -260,7 +263,6 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
                             stack.setCount(this.addStack(slot, stack));
                         }
                     } while(!stack.isEmpty() && stack.getCount() < i);
-
                     if (stack.getCount() == i && this.player.getAbilities().creativeMode) {
                         stack.setCount(0);
                         return true;
@@ -279,6 +281,15 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
         }
     }
 
+    // A very hacky way to force the inventory to always sync
+    @Inject(method = "updateItems", at = @At(value = "TAIL"))
+    public void updateItems(CallbackInfo ci) {
+        if(this.needsToSync && this.player instanceof ServerPlayerEntity) {
+            MinecraftClient.getInstance().player.getInventory().main = this.main;
+            this.needsToSync = false;
+        }
+    }
+
     /**
      * @author
      * @reason
@@ -287,7 +298,4 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     public int size() {
         return this.main.size() + this.armor.size() + this.offHand.size();
     }
-
-    @Unique
-    public DefaultedList<ItemStack> getMainInventory() { return this.main; }
 }
