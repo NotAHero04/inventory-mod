@@ -1,5 +1,6 @@
 package com.negativeonehero.inventorymod.mixin;
 
+import com.negativeonehero.inventorymod.impl.IPlayerInventory;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.gui.tooltip.Tooltip;
@@ -57,28 +58,18 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
         this.nextButton = ButtonWidget.builder(Text.of(">"), button -> {
             this.updateButtons(true);
         })
-                .position(66, 10)
+                .position(86, 10)
                 .size(16, 16).tooltip(Tooltip.of(Text.of("Page " + (page + 1))))
                 .build();
         this.addDrawableChild(this.nextButton);
-        this.pageText = ButtonWidget.builder(Text.of("Page " + page), button -> {
-            this.cleanInventory();
-        })
+        this.pageText = ButtonWidget.builder(Text.of("Page " + page), button -> {})
                 .position(26, 10)
-                .size(60, 16).tooltip(Tooltip.of(Text.of("Click to clean inventory")))
+                .size(60, 16)
                 .build();
         this.addDrawableChild(this.pageText);
         this.previousButton.visible = this.page > 1;
         this.pageText.visible = true;
         this.nextButton.visible = this.page < this.inventory.size() / 27;
-    }
-
-    @Unique
-    public void cleanInventory() {
-        for(int i = this.inventory.main.size() - 1; i > 0; i--) {
-            ItemStack stack = this.inventory.removeStack(i);
-            this.inventory.insertStack(-1, stack);
-        }
     }
 
     @Unique
@@ -108,16 +99,11 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
         this.swapInventory(this.page);
     }
 
-    /**
-     * @author
-     * @reason
-     */
-    @Overwrite
-    public boolean isClickOutsideBounds(double mouseX, double mouseY, int left, int top, int button) {
-        boolean oldClickOutsideBounds = mouseX < (double)left || mouseY < (double)top
-                || mouseX >= (double)(left + this.backgroundWidth) || mouseY >= (double)(top + this.backgroundHeight);
-        boolean clickOutsideButtons = mouseX < 10 || mouseX > 82 || mouseY < 10 || mouseY > 26;
-        return oldClickOutsideBounds && clickOutsideButtons;
+    @Inject(method = "tick", at = @At(value = "HEAD"))
+    public void tickButtons(CallbackInfo ci) {
+        if(!this.nextButton.visible && 27 * page + 9 < this.inventory.main.size()) {
+            this.nextButton.visible = true;
+        }
     }
 
     @Unique
@@ -130,6 +116,7 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
                 this.inventory.setStack(startIndex + i + 5, this.inventory.getStack(i + 9));
                 this.inventory.setStack(i + 9, stack.get(i));
             }
+            ((IPlayerInventory) this.inventory).setContentChanged();
         }
     }
 }

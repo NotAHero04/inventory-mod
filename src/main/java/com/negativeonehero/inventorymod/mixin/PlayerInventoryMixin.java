@@ -2,6 +2,7 @@ package com.negativeonehero.inventorymod.mixin;
 
 import com.google.common.collect.ImmutableList;
 import com.negativeonehero.inventorymod.ExtendableItemStackDefaultedList;
+import com.negativeonehero.inventorymod.impl.IPlayerInventory;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
@@ -25,7 +26,7 @@ import java.util.List;
 import java.util.function.Predicate;
 
 @Mixin(PlayerInventory.class)
-public abstract class PlayerInventoryMixin implements Inventory {
+public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventory {
     @Final
     @Shadow
     @Mutable
@@ -49,9 +50,10 @@ public abstract class PlayerInventoryMixin implements Inventory {
     protected abstract int addStack(int slot, ItemStack stack);
     @Unique
     private boolean needsToSync = true;
-
     @Shadow @Final @Mutable
     private List<DefaultedList<ItemStack>> combinedInventory;
+    @Unique
+    private boolean contentChanged = false;
 
     @Inject(method = "<init>", at = @At(value = "TAIL"))
     public void constructor(PlayerEntity player, CallbackInfo ci) {
@@ -217,6 +219,11 @@ public abstract class PlayerInventoryMixin implements Inventory {
      */
     @Overwrite
     private int addStack(ItemStack stack) {
+        // Fix duping while picking items on swapping inventories
+        if(this.contentChanged) {
+            this.contentChanged = false;
+            return this.addStack(stack);
+        }
         int i = this.getOccupiedSlotWithRoomForStack(stack);
         if (i == -1) {
             i = this.getEmptySlot();
@@ -294,10 +301,7 @@ public abstract class PlayerInventoryMixin implements Inventory {
         if(this.needsToSync && this.player instanceof ServerPlayerEntity) {
             // Fixes race condition upon rejoining a world... by simply waiting
             while(MinecraftClient.getInstance().player == null) Thread.sleep(500);
-            MinecraftClient.getInstance().player.getInventory().main = this.main;
-            MinecraftClient.getInstance().player.getInventory().armor = this.armor;
-            MinecraftClient.getInstance().player.getInventory().offHand = this.offHand;
-            MinecraftClient.getInstance().player.getInventory().combinedInventory = this.combinedInventory;
+            MinecraftClient.getInstance().player.inventory = (PlayerInventory) (Object) this;
             this.needsToSync = false;
         }
     }
@@ -310,4 +314,7 @@ public abstract class PlayerInventoryMixin implements Inventory {
     public int size() {
         return this.main.size() + this.armor.size() + this.offHand.size();
     }
+
+    @Unique
+    public void setContentChanged() { this.contentChanged = true; }
 }
