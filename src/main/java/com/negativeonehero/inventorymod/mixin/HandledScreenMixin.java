@@ -1,15 +1,23 @@
 package com.negativeonehero.inventorymod.mixin;
 
 import com.negativeonehero.inventorymod.impl.IPlayerInventory;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screen.ingame.CreativeInventoryScreen;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
+import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.item.ItemGroups;
 import net.minecraft.item.ItemStack;
+import net.minecraft.registry.Registries;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.text.Text;
-import org.spongepowered.asm.mixin.*;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -33,7 +41,7 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
     @Unique
     private ButtonWidget nextButton;
     @Unique
-    private ButtonWidget pageText;
+    private ButtonWidget functionButton;
     @Unique
     private int page = 1;
 
@@ -62,14 +70,17 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
                 .size(16, 16).tooltip(Tooltip.of(Text.of("Page " + (page + 1))))
                 .build();
         this.addDrawableChild(this.nextButton);
-        this.pageText = ButtonWidget.builder(Text.of("Page " + page), button -> {})
+        this.functionButton = ButtonWidget.builder(Text.of("Page " + page), button -> {})
                 .position(26, 10)
                 .size(60, 16)
                 .build();
-        this.addDrawableChild(this.pageText);
+        this.addDrawableChild(this.functionButton);
+        /*
         this.previousButton.visible = this.page > 1;
-        this.pageText.visible = true;
+        this.functionButton.visible = true;
         this.nextButton.visible = this.page < this.inventory.size() / 27;
+
+         */
     }
 
     @Unique
@@ -91,12 +102,23 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
         }
         this.previousButton.setTooltip(Tooltip.of(Text.of("Page " + (page - 1))));
         this.nextButton.setTooltip(Tooltip.of(Text.of("Page " + (page + 1))));
-        this.pageText.setMessage(Text.of("Page " + page));
+        this.functionButton.setMessage(Text.of("Page " + page));
     }
 
     @Inject(method = "removed", at = @At(value = "HEAD"))
     public void resetInventory(CallbackInfo ci) {
         this.swapInventory(this.page);
+    }
+
+    @SuppressWarnings("ConstantValue")
+    @Inject(method = "render", at = @At(value = "HEAD"))
+    public void updateButtonsVisibility(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+        boolean visible = (((Object) this) instanceof CreativeInventoryScreen
+                && CreativeInventoryScreen.selectedTab == Registries.ITEM_GROUP.getOrThrow(ItemGroups.INVENTORY))
+                || ((Object) this) instanceof InventoryScreen;
+        this.previousButton.visible = this.page > 1 && visible;
+        this.functionButton.visible = visible;
+        this.nextButton.visible = this.page < this.inventory.size() / 27 && visible;
     }
 
     @Inject(method = "tick", at = @At(value = "HEAD"))
