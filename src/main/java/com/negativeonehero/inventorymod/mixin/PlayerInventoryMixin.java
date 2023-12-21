@@ -6,7 +6,6 @@ import com.negativeonehero.inventorymod.impl.IPlayerInventory;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.inventory.Inventories;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -23,7 +22,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
-import java.util.function.Predicate;
 
 @Mixin(PlayerInventory.class)
 public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventory {
@@ -199,25 +197,6 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
      * @reason
      */
     @Overwrite
-    public int remove(Predicate<ItemStack> shouldRemove, int maxCount, Inventory craftingInventory) {
-        int i = 0;
-        boolean bl = maxCount == 0;
-        i += Inventories.remove(this, shouldRemove, maxCount - i, bl);
-        i += Inventories.remove(craftingInventory, shouldRemove, maxCount - i, bl);
-        ItemStack itemStack = this.player.currentScreenHandler.getCursorStack();
-        i += Inventories.remove(itemStack, shouldRemove, maxCount - i, bl);
-        if (itemStack.isEmpty()) {
-            this.player.currentScreenHandler.setCursorStack(ItemStack.EMPTY);
-        }
-
-        return i;
-    }
-
-    /**
-     * @author
-     * @reason
-     */
-    @Overwrite
     private int addStack(ItemStack stack) {
         // Fix duping while picking items on swapping inventories
         if(this.contentChanged) {
@@ -231,6 +210,8 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
 
         return i == -1 ? stack.getCount() : this.addStack(i, stack);
     }
+
+    // Technically removeStack() can also cause duping, but it's impossible to recreate
 
     /**
      * @author
