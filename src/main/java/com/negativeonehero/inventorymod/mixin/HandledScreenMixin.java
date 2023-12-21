@@ -55,17 +55,19 @@ public abstract class HandledScreenMixin extends Screen {
     public void init(CallbackInfo ci) {
         this.previousButton = ButtonWidget.builder(Text.of("<"), button -> this.update(false))
                 .position(10, 10)
-                .size(16, 16).tooltip(Tooltip.of(Text.of("Page " + (page - 1))))
+                .size(16, 16)
+                .tooltip(Tooltip.of(Text.of("Page " + (page - 1))))
                 .build();
         this.addDrawableChild(this.previousButton);
         this.nextButton = ButtonWidget.builder(Text.of(">"), button -> this.update(true))
                 .position(86, 10)
-                .size(16, 16).tooltip(Tooltip.of(Text.of("Page " + (page + 1))))
+                .size(16, 16)
+                .tooltip(Tooltip.of(Text.of("Page " + (page + 1))))
                 .build();
         this.addDrawableChild(this.nextButton);
         this.functionButton = ButtonWidget.builder(Text.of("Page " + page), button -> {
             this.sorting = !this.sorting;
-            this.updateButtons();
+            this.updateTooltip();
                 })
                 .position(26, 10)
                 .size(60, 16)
@@ -74,7 +76,6 @@ public abstract class HandledScreenMixin extends Screen {
         this.sortingTypeButton = ButtonWidget.builder(this.sortingType.message, button -> {
             this.sortingType = this.sortingType.next();
             button.setMessage(this.sortingType.message);
-            this.updateButtons();
                 })
                 .position(10, 26)
                 .size(92, 16)
@@ -102,12 +103,26 @@ public abstract class HandledScreenMixin extends Screen {
                     else this.swapInventory(this.page);
                 }
             }
-            this.updateButtons();
+            this.updateTooltip();
+        }
+    }
+
+    @Unique
+    private void updateTooltip() {
+        if(sorting) {
+            this.previousButton.setTooltip(Tooltip.of(Text.of("Sort Descending")));
+            this.nextButton.setTooltip(Tooltip.of(Text.of("Sort Ascending")));
+            this.functionButton.setMessage(Text.of("Sorting"));
+        } else {
+            this.previousButton.setTooltip(Tooltip.of(Text.of("Page " + (page - 1))));
+            this.nextButton.setTooltip(Tooltip.of(Text.of("Page " + (page + 1))));
+            this.functionButton.setMessage(Text.of("Page " + page));
         }
     }
 
     @Unique
     public void sort(boolean ascending) {
+        this.swapInventory(this.page);
         ArrayList<ItemStack> stacks = new ArrayList<>();
         int emptySlots = 0;
         for(int i = 9; i < this.inventory.main.size(); i++) {
@@ -123,6 +138,7 @@ public abstract class HandledScreenMixin extends Screen {
             this.inventory.setStack(i + (i > 26 ? 14 : 9), stacks.get(i));
         }
         ((IPlayerInventory) this.inventory).setContentChanged();
+        this.swapInventory(this.page);
     }
 
     @SuppressWarnings("ConstantValue")
@@ -136,17 +152,11 @@ public abstract class HandledScreenMixin extends Screen {
             this.functionButton.visible = visible;
             this.nextButton.visible = visible;
             this.sortingTypeButton.visible = visible;
-            this.previousButton.setTooltip(Tooltip.of(Text.of("Sort Descending")));
-            this.nextButton.setTooltip(Tooltip.of(Text.of("Sort Ascending")));
-            this.functionButton.setMessage(Text.of("Sorting"));
         } else {
             this.previousButton.visible = this.page > 1 && visible;
             this.functionButton.visible = visible;
             this.nextButton.visible = this.page < this.inventory.size() / 27 && visible;
             this.sortingTypeButton.visible = false;
-            this.previousButton.setTooltip(Tooltip.of(Text.of("Page " + (page - 1))));
-            this.nextButton.setTooltip(Tooltip.of(Text.of("Page " + (page + 1))));
-            this.functionButton.setMessage(Text.of("Page " + page));
         }
     }
 
