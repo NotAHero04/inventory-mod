@@ -51,7 +51,7 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     @Shadow @Final @Mutable
     private List<DefaultedList<ItemStack>> combinedInventory;
     @Unique
-    private boolean contentChanged = false;
+    private int contentChanged = 0;
 
     @Inject(method = "<init>", at = @At(value = "TAIL"))
     public void constructor(PlayerEntity player, CallbackInfo ci) {
@@ -199,8 +199,8 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     @Overwrite
     private int addStack(ItemStack stack) {
         // Fix duping while picking items on swapping inventories
-        if(this.contentChanged) {
-            this.contentChanged = false;
+        if(this.contentChanged > 0) {
+            this.contentChanged--;
             return this.addStack(stack);
         }
         int i = this.getOccupiedSlotWithRoomForStack(stack);
@@ -297,5 +297,5 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     }
 
     @Unique
-    public void setContentChanged() { this.contentChanged = true; }
+    public void setContentChanged() { this.contentChanged++; }
 }
