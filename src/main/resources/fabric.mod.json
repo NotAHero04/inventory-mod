@@ -2,11 +2,14 @@
   "schemaVersion": 1,
   "id": "inventorymod",
   "version": "${version}",
-  "name": "inventorymod",
-  "description": "",
-  "authors": [],
+  "name": "Inventory Mod",
+  "description": "The next infinite inventory mod.",
+  "authors": [
+    "NegativeOneHero"
+  ],
   "contact": {
-    "repo": "https://github.com/laptop/inventorymod"
+    "sources": "https://github.com/NotAHero04/inventory-mod",
+    "issues": "https://github.com/NotAHero04/inventory-mod/issues"
   },
   "license": "MIT",
   "icon": "assets/inventorymod/icon.png",
