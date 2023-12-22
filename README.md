@@ -10,3 +10,8 @@ Rises from the ashes of [Infinitory](https://github.com/Furgl/Infinitory) and [S
 This mod features infinite inventory with huge stack size.
 
 It is still in beta, so do expect game-breaking bugs. Bug reports are very appreciated!
+
+# Downloads
+
+[GitHub Actions](https://github.com/NotAHero04/inventory-mod/actions)
+Modrinth (soon)
