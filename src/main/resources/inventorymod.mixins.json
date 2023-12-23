@@ -14,9 +14,9 @@
   ],
   "client": [
     "CreativeInventoryScreenMixin",
-    "DrawContextMixin",
     "HandledScreenMixin",
-    "InventoryScreenMixin"
+    "InventoryScreenMixin",
+    "ItemRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

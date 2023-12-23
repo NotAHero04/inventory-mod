@@ -239,7 +239,8 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
                         slot = this.getEmptySlot();
                     }
                     if (slot <= 35 || slot >= 41) {
-                        this.main.set(mainSlotFromInv(slot), stack.copyAndEmpty());
+                        this.main.set(mainSlotFromInv(slot), stack.copy());
+                        stack.setCount(0);
                         this.main.get(mainSlotFromInv(slot)).setBobbingAnimationTime(5);
                         return true;
                     } else if (this.player.getAbilities().creativeMode) {

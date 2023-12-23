@@ -1,9 +1,11 @@
 package com.negativeonehero.inventorymod.mixin;
 
 import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.item.ItemRenderer;
 import net.minecraft.util.Formatting;
 import org.apache.commons.lang3.StringUtils;
+import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -13,8 +15,8 @@ import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.Objects;
 
-@Mixin(DrawContext.class)
-public class DrawContextMixin {
+@Mixin(ItemRenderer.class)
+public class ItemRendererMixin {
 
     @Unique
     private String formatDouble(double number, int decimalPlaces) {
@@ -24,8 +26,8 @@ public class DrawContextMixin {
         return df.format(n);
     }
 
-    @Redirect(method = "drawItemInSlot(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/item/ItemStack;IILjava/lang/String;)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/DrawContext;drawText(Lnet/minecraft/client/font/TextRenderer;Ljava/lang/String;IIIZ)I"))
-    private int draw(DrawContext instance, TextRenderer renderer, String text, int x, int y, int color, boolean shadow) {
+    @Redirect(method = "renderGuiItemOverlay(Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/item/ItemStack;IILjava/lang/String;)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/font/TextRenderer;draw(Ljava/lang/String;FFIZLorg/joml/Matrix4f;Lnet/minecraft/client/render/VertexConsumerProvider;Lnet/minecraft/client/font/TextRenderer$TextLayerType;II)I"))
+    private int draw(TextRenderer renderer, String text, float x, float y, int color, boolean shadow, Matrix4f matrix, VertexConsumerProvider vertexConsumers, TextRenderer.TextLayerType layerType, int backgroundColor, int light) {
         try {
             String newText = text;
             try {
@@ -42,12 +44,12 @@ public class DrawContextMixin {
             }
 
             float scale = 0.55f;
-            instance.getMatrices().scale(scale, scale, 1);
-            return instance.drawText(renderer, newText, (int) ((x + renderer.getWidth(text)) / scale - renderer.getWidth(newText) - 3), (int) (y / scale + 4), color, shadow);
+            matrix.scale(scale, scale, 1);
+            return renderer.draw(newText, (x+renderer.getWidth(text))/scale-renderer.getWidth(newText)-3, y/scale+4, color, shadow, matrix, vertexConsumers, layerType, backgroundColor, light);
         }
         catch (Exception e) {
             e.printStackTrace();
-            return instance.drawText(renderer, text, x, y, color, shadow);
+            return renderer.draw(text, x, y, color, shadow, matrix, vertexConsumers, layerType, backgroundColor, light);
         }
     }
 }

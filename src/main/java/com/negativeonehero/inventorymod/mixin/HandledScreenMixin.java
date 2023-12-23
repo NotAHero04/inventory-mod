@@ -2,17 +2,16 @@ package com.negativeonehero.inventorymod.mixin;
 
 import com.negativeonehero.inventorymod.SortingType;
 import com.negativeonehero.inventorymod.impl.IPlayerInventory;
-import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.ingame.CreativeInventoryScreen;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.ItemGroups;
+import net.minecraft.item.ItemGroup;
 import net.minecraft.item.ItemStack;
-import net.minecraft.registry.Registries;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.text.Text;
 import org.spongepowered.asm.mixin.Mixin;
@@ -145,7 +144,7 @@ public abstract class HandledScreenMixin extends Screen {
     @Unique
     private void updateButtons() {
         boolean visible = (((Object) this) instanceof CreativeInventoryScreen
-                && CreativeInventoryScreen.selectedTab == Registries.ITEM_GROUP.getOrThrow(ItemGroups.INVENTORY))
+                && CreativeInventoryScreen.selectedTab.getType() == ItemGroup.Type.INVENTORY)
                 || ((Object) this) instanceof InventoryScreen;
         if(sorting) {
             this.previousButton.visible = visible;
@@ -166,7 +165,7 @@ public abstract class HandledScreenMixin extends Screen {
     }
 
     @Inject(method = "render", at = @At(value = "HEAD"))
-    public void updateButtonsVisibility(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+    public void updateButtonsVisibility(MatrixStack matrices, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         this.updateButtons();
     }
 
