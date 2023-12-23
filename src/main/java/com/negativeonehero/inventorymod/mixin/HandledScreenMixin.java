@@ -6,7 +6,6 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.ingame.CreativeInventoryScreen;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
-import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.player.PlayerInventory;
@@ -41,6 +40,11 @@ public abstract class HandledScreenMixin extends Screen {
     @Unique
     private SortingType sortingType = SortingType.COUNT;
 
+    @Unique
+    private Text previousTooltip = Text.of("");
+    @Unique
+    private Text nextTooltip = Text.of("");
+
     protected HandledScreenMixin(Text title) {
         super(title);
     }
@@ -52,34 +56,33 @@ public abstract class HandledScreenMixin extends Screen {
 
     @Inject(method = "init", at = @At(value = "TAIL"))
     public void init(CallbackInfo ci) {
-        this.previousButton = ButtonWidget.builder(Text.of("<"), button -> this.update(false))
-                .position(10, 10)
-                .size(16, 16)
-                .tooltip(Tooltip.of(Text.of("Page " + (page - 1))))
-                .build();
+        this.previousButton = new ButtonWidget(10, 10, 16, 16, Text.of("<"),
+                button -> this.update(false), (button, matrices, mouseX, mouseY) -> {
+            if (mouseX >= button.x && mouseX <= button.x+button.getWidth()
+                    && mouseY >= button.y && mouseY <= button.y+button.getHeight())
+                this.renderTooltip(matrices, this.previousTooltip, mouseX, mouseY);
+                });
         this.addDrawableChild(this.previousButton);
-        this.nextButton = ButtonWidget.builder(Text.of(">"), button -> this.update(true))
-                .position(86, 10)
-                .size(16, 16)
-                .tooltip(Tooltip.of(Text.of("Page " + (page + 1))))
-                .build();
+        this.nextButton = new ButtonWidget(86, 10, 16, 16, Text.of(">"),
+                button -> this.update(true), (button, matrices, mouseX, mouseY) -> {
+            if (mouseX >= button.x && mouseX <= button.x+button.getWidth()
+                    && mouseY >= button.y && mouseY <= button.y+button.getHeight())
+                this.renderTooltip(matrices, this.nextTooltip, mouseX, mouseY);
+        });
         this.addDrawableChild(this.nextButton);
-        this.functionButton = ButtonWidget.builder(Text.of("Page " + page), button -> {
-            this.sorting = !this.sorting;
-            this.updateTooltip();
-                })
-                .position(26, 10)
-                .size(60, 16)
-                .build();
+        this.functionButton = new ButtonWidget(26, 10, 60, 16, Text.of("Page " + page),
+                button -> {
+                    this.sorting = !this.sorting;
+                    this.updateTooltip();
+                });
         this.addDrawableChild(this.functionButton);
-        this.sortingTypeButton = ButtonWidget.builder(this.sortingType.message, button -> {
-            this.sortingType = this.sortingType.next();
-            button.setMessage(this.sortingType.message);
-                })
-                .position(10, 26)
-                .size(92, 16)
-                .build();
+        this.sortingTypeButton = new ButtonWidget(10, 26, 92, 16, this.sortingType.message,
+                button -> {
+                    this.sortingType = this.sortingType.next();
+                    button.setMessage(this.sortingType.message);
+                });
         this.addDrawableChild(this.sortingTypeButton);
+        this.updateTooltip();
     }
 
     @Unique
@@ -109,12 +112,12 @@ public abstract class HandledScreenMixin extends Screen {
     @Unique
     private void updateTooltip() {
         if(sorting) {
-            this.previousButton.setTooltip(Tooltip.of(Text.of("Sort Descending")));
-            this.nextButton.setTooltip(Tooltip.of(Text.of("Sort Ascending")));
+            this.previousTooltip = Text.of("Sort Descending");
+            this.nextTooltip = Text.of("Sort Ascending");
             this.functionButton.setMessage(Text.of("Sorting"));
         } else {
-            this.previousButton.setTooltip(Tooltip.of(Text.of("Page " + (page - 1))));
-            this.nextButton.setTooltip(Tooltip.of(Text.of("Page " + (page + 1))));
+            this.previousTooltip = Text.of("Page " + (page - 1));
+            this.nextTooltip = Text.of("Page " + (page + 1));
             this.functionButton.setMessage(Text.of("Page " + page));
         }
     }
@@ -144,7 +147,7 @@ public abstract class HandledScreenMixin extends Screen {
     @Unique
     private void updateButtons() {
         boolean visible = (((Object) this) instanceof CreativeInventoryScreen
-                && CreativeInventoryScreen.selectedTab.getType() == ItemGroup.Type.INVENTORY)
+                && CreativeInventoryScreen.selectedTab == ItemGroup.INVENTORY.getIndex())
                 || ((Object) this) instanceof InventoryScreen;
         if(sorting) {
             this.previousButton.visible = visible;
