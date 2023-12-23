@@ -1,7 +1,7 @@
 # Sources
-| [Fabric 1.20](https://github.com/NotAHero04/inventory-mod/tree/1.20) |
-|----------------------------------------------------------------------|
-| Maintained                                                           |
+| [Fabric 1.17 - 1.18](https://github.com/NotAHero04/inventory-mod/tree/1.18) | [Fabric 1.19](https://github.com/NotAHero04/inventory-mod/tree/1.19) | [Fabric 1.20](https://github.com/NotAHero04/inventory-mod/tree/1.20) |
+|-----------------------------------------------------------------------------|----------------------------------------------------------------------|----------------------------------------------------------------------|
+| Not Maintained                                                              | Not Maintained                                                       | Maintained                                                           |
 
 # Inventory Mod
 
