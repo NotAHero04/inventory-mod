@@ -62,26 +62,26 @@ public abstract class HandledScreenMixin extends Screen {
                     && mouseY >= button.y && mouseY <= button.y+button.getHeight())
                 this.renderTooltip(matrices, this.previousTooltip, mouseX, mouseY);
                 });
-        this.addDrawableChild(this.previousButton);
+        this.children.add(this.previousButton);
         this.nextButton = new ButtonWidget(86, 10, 16, 16, Text.of(">"),
                 button -> this.update(true), (button, matrices, mouseX, mouseY) -> {
             if (mouseX >= button.x && mouseX <= button.x+button.getWidth()
                     && mouseY >= button.y && mouseY <= button.y+button.getHeight())
                 this.renderTooltip(matrices, this.nextTooltip, mouseX, mouseY);
         });
-        this.addDrawableChild(this.nextButton);
+        this.children.add(this.nextButton);
         this.functionButton = new ButtonWidget(26, 10, 60, 16, Text.of("Page " + page),
                 button -> {
                     this.sorting = !this.sorting;
                     this.updateTooltip();
                 });
-        this.addDrawableChild(this.functionButton);
+        this.children.add(this.functionButton);
         this.sortingTypeButton = new ButtonWidget(10, 26, 92, 16, this.sortingType.message,
                 button -> {
                     this.sortingType = this.sortingType.next();
                     button.setMessage(this.sortingType.message);
                 });
-        this.addDrawableChild(this.sortingTypeButton);
+        this.children.add(this.sortingTypeButton);
         this.updateTooltip();
     }
 
