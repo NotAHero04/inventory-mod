@@ -14,4 +14,3 @@ It is still in beta, so do expect game-breaking bugs. Bug reports are very appre
 # Downloads
 
 [GitHub Actions](https://github.com/NotAHero04/inventory-mod/actions)
-Modrinth (soon)
