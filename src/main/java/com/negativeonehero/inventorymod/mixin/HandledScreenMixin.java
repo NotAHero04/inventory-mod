@@ -10,7 +10,6 @@ import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.ItemGroups;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
@@ -123,14 +122,17 @@ public abstract class HandledScreenMixin extends Screen {
     @Unique
     public void sort(boolean ascending) {
         this.swapInventory(this.page);
-        SimpleInventory inventory1 = new SimpleInventory(this.inventory.main.size());
+        ArrayList<ItemStack> stacks = new ArrayList<>();
         int emptySlots = 0;
+        for(int i = this.inventory.main.size() - 1; i >= 9; i--) {
+            this.inventory.insertStack(this.inventory.removeStack(i));
+        }
+        ((IPlayerInventory) this.inventory).setContentChanged();
         for(int i = 9; i < this.inventory.main.size(); i++) {
             ItemStack stack = this.inventory.main.get(i);
             if (stack.isEmpty()) emptySlots++;
-            else inventory1.addStack(stack);
+            else stacks.add(stack);
         }
-        ArrayList<ItemStack> stacks = new ArrayList<>(inventory1.heldStacks);
         this.sortingType.sort(stacks, ascending);
         for(int i = 0; i < emptySlots; i++) {
             stacks.add(ItemStack.EMPTY);
