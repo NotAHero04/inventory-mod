@@ -2,8 +2,13 @@ package com.negativeonehero.inventorymod.mixin;
 
 import com.google.common.collect.ImmutableList;
 import com.negativeonehero.inventorymod.ExtendableItemStackDefaultedList;
+import com.negativeonehero.inventorymod.SortingType;
 import com.negativeonehero.inventorymod.impl.IPlayerInventory;
-import net.minecraft.client.MinecraftClient;
+import com.negativeonehero.inventorymod.network.Packets;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventory;
@@ -11,6 +16,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.crash.CrashException;
@@ -21,7 +27,10 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Mixin(PlayerInventory.class)
 public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventory {
@@ -37,6 +46,8 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     @Shadow
     @Mutable
     public DefaultedList<ItemStack> offHand;
+    @Unique
+    public ExtendableItemStackDefaultedList mainExtras;
     @Final
     @Shadow
     public PlayerEntity player;
@@ -45,34 +56,31 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     @Shadow
     protected abstract boolean canStackAddMore(ItemStack existingStack, ItemStack stack);
     @Shadow
-    protected abstract int addStack(int slot, ItemStack stack);
+    public abstract boolean insertStack(ItemStack stack);
     @Unique
     private boolean needsToSync = true;
-    @Shadow @Final @Mutable
-    private List<DefaultedList<ItemStack>> combinedInventory;
+
+    @Shadow public abstract ItemStack removeStack(int slot);
+
+    @Shadow public abstract void markDirty();
+
+    @Mutable
+    @Shadow @Final private List<DefaultedList<ItemStack>> combinedInventory;
     @Unique
     private int contentChanged = 0;
 
     @Inject(method = "<init>", at = @At(value = "TAIL"))
     public void constructor(PlayerEntity player, CallbackInfo ci) {
-        this.main = ExtendableItemStackDefaultedList.ofSize(36, ItemStack.EMPTY);
-        this.combinedInventory = ImmutableList.of(this.main, this.armor, this.offHand);
+        this.mainExtras = ExtendableItemStackDefaultedList.ofSize(0, ItemStack.EMPTY);
+        this.combinedInventory = ImmutableList.of(this.main, this.armor, this.offHand, this.mainExtras);
     }
 
-    // The inventory is rearranged for extra slots in the `main` part
-    // Slot 0-35 and 41+ is for main
-    // Slot 36-39 is for armor
-    // Slot 40 is for off-hand
-
-    @Unique
-    public int invSlotFromMain(int mainSlot) {
-        return mainSlot + (mainSlot > 35 ? 5 : 0);
-    }
-
-    @Unique
-    public int mainSlotFromInv(int invSlot) {
-        return invSlot - (invSlot > 35 ? 5 : 0);
-    }
+    /* The inventory is rearranged for extra slots in the `main` part
+     * Slot 0-35 - main
+     * Slot 36-39 - armor
+     * Slot 40 - off-hand
+     * Slot 41+ - main extras
+     */
 
     /**
      * @author
@@ -80,14 +88,20 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
      */
     @Overwrite
     public int getEmptySlot() {
-        for(int i = 0; i < this.main.size(); ++i) {
-            if (this.main.get(i).isEmpty()) {
-                return invSlotFromMain(i);
-            }
+        int i = 0;
+        for(ItemStack stack : main) {
+            if(stack.isEmpty()) return i;
+            i++;
         }
-        // Add 27 stacks at once
-        for(int k = 0; k < 27; k++)
-            this.main.add(ItemStack.EMPTY);
+        i += 5; // We don't check slot 36-40
+        for(ItemStack stack : mainExtras) {
+            if(stack.isEmpty()) return i;
+            i++;
+        }
+        for (int k = 0; k < 27; k++) {
+            this.mainExtras.add(ItemStack.EMPTY);
+            this.needsToSync = true;
+        }
         return this.getEmptySlot();
     }
 
@@ -100,7 +114,8 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
         // The OG method avoids using conditionals
         if(slot == 40) this.offHand.set(0, stack);
         else if(slot >= 36 && slot < 40) this.armor.set(slot - 36, stack);
-        else this.main.set(mainSlotFromInv(slot), stack);
+        else if(slot < 36) this.main.set(slot, stack);
+        else this.mainExtras.set(slot - 41, stack);
     }
 
     /**
@@ -114,7 +129,7 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
         for(i = 0; i < this.main.size(); ++i) {
             if (!this.main.get(i).isEmpty()) {
                 nbtCompound = new NbtCompound();
-                nbtCompound.putInt("Slot", invSlotFromMain(i));
+                nbtCompound.putInt("Slot", i);
                 this.main.get(i).writeNbt(nbtCompound);
                 nbtList.add(nbtCompound);
             }
@@ -132,8 +147,17 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
         for(i = 0; i < this.offHand.size(); ++i) {
             if (!this.offHand.get(i).isEmpty()) {
                 nbtCompound = new NbtCompound();
-                nbtCompound.putInt("Slot", i + 40);;
+                nbtCompound.putInt("Slot", i + 40);
                 this.offHand.get(i).writeNbt(nbtCompound);
+                nbtList.add(nbtCompound);
+            }
+        }
+
+        for(i = 0; i < this.mainExtras.size(); ++i) {
+            if (!this.mainExtras.get(i).isEmpty()) {
+                nbtCompound = new NbtCompound();
+                nbtCompound.putInt("Slot", i + 41);
+                this.mainExtras.get(i).writeNbt(nbtCompound);
                 nbtList.add(nbtCompound);
             }
         }
@@ -150,6 +174,7 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
         this.main.clear();
         this.armor.clear();
         this.offHand.clear();
+        this.mainExtras.clear();
 
         for (int i = 0; i < nbtList.size(); ++i) {
             NbtCompound nbtCompound = nbtList.getCompound(i);
@@ -163,11 +188,11 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
                 } else if (j >= 0 && j < 36) {
                     this.main.set(j, itemStack);
                 } else {
-                    this.main.add(itemStack);
+                    this.mainExtras.add(itemStack);
                 }
             }
         }
-        while(this.main.size() % 27 != 9) this.main.add(ItemStack.EMPTY);
+        while(this.mainExtras.size() % 27 != 0) this.mainExtras.add(ItemStack.EMPTY);
     }
 
     /**
@@ -184,10 +209,14 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
         } else {
             for(int i = 0; i < this.main.size(); ++i) {
                 if (this.canStackAddMore(this.main.get(i), stack)) {
-                    return invSlotFromMain(i);
+                    return i;
                 }
             }
-
+            for(int i = 0; i < this.mainExtras.size(); ++i) {
+                if (this.canStackAddMore(this.mainExtras.get(i), stack)) {
+                    return i + 41;
+                }
+            }
             return -1;
         }
     }
@@ -211,6 +240,36 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
         return i == -1 ? stack.getCount() : this.addStack(i, stack);
     }
 
+    /**
+     * @author
+     * @reason
+     */
+    @Overwrite
+    private int addStack(int slot, ItemStack stack) {
+        Item item = stack.getItem();
+        int i = stack.getCount();
+        ItemStack itemStack = this.getStack(slot);
+        if (itemStack.isEmpty()) {
+            itemStack = new ItemStack(item, 0);
+            if (stack.hasTag()) {
+                assert stack.getTag() != null;
+                itemStack.setTag(stack.getTag().copy());
+            }
+
+            this.setStack(slot, itemStack);
+        }
+
+        int j = Math.min(i, itemStack.getMaxCount() - itemStack.getCount());
+        j = Math.min(j, this.getMaxCountPerStack() - itemStack.getCount());
+
+        if (j != 0) {
+            i -= j;
+            itemStack.increment(j);
+            itemStack.setCooldown(5);
+        }
+        return i;
+    }
+
     // Technically removeStack() can also cause duping, but it's impossible to recreate
 
     /**
@@ -221,7 +280,8 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     public ItemStack getStack(int slot) {
         if(slot == 40) return this.offHand.get(0);
         if(slot >= 36 && slot < 40) return this.armor.get(slot - 36);
-        return this.main.get(mainSlotFromInv(slot));
+        if(slot < 36) return this.main.get(slot);
+        return this.mainExtras.get(slot - 41);
     }
 
     /**
@@ -238,10 +298,15 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
                     if (slot == -1) {
                         slot = this.getEmptySlot();
                     }
-                    if (slot <= 35 || slot >= 41) {
-                        this.main.set(mainSlotFromInv(slot), stack.copy());
+                    if (slot <= 35) {
+                        this.main.set(slot, stack.copy());
                         stack.setCount(0);
-                        this.main.get(mainSlotFromInv(slot)).setCooldown(5);
+                        this.main.get(slot).setCooldown(5);
+                        return true;
+                    } else if (slot >= 41) {
+                        this.mainExtras.set(slot - 41, stack.copy());
+                        stack.setCount(0);
+                        this.mainExtras.get(slot - 41).setCooldown(5);
                         return true;
                     } else if (this.player.abilities.creativeMode) {
                         stack.setCount(0);
@@ -279,11 +344,13 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
 
     // A very hacky way to force the inventory to always sync
     @Inject(method = "updateItems", at = @At(value = "TAIL"))
-    public void syncInventories(CallbackInfo ci) throws InterruptedException {
+    public void syncInventories(CallbackInfo ci) {
         if(this.needsToSync && this.player instanceof ServerPlayerEntity) {
-            // Fixes race condition upon rejoining a world... by simply waiting
-            while(MinecraftClient.getInstance().player == null) Thread.sleep(500);
-            MinecraftClient.getInstance().player.inventory = (PlayerInventory) (Object) this;
+            PacketByteBuf buf = PacketByteBufs.create();
+            buf.writeInt(this.mainExtras.size());
+            for(ItemStack stack : this.mainExtras) buf.writeItemStack(stack);
+            ServerPlayNetworking.send((ServerPlayerEntity) this.player, Packets.UPDATE_EXTRA_SLOTS_PACKET_ID, buf);
+            this.markDirty();
             this.needsToSync = false;
         }
     }
@@ -294,9 +361,93 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
      */
     @Overwrite
     public int size() {
-        return this.main.size() + this.armor.size() + this.offHand.size();
+        return this.main.size() + this.armor.size() + this.offHand.size() + this.mainExtras.size();
+    }
+
+    // Interface: IPlayerInventory
+
+    @Unique
+    public ItemStack removeExtrasStack(int slot) { return this.removeStack(slot + 41); }
+
+    @Unique
+    public void setContentChanged() {
+        this.contentChanged++;
     }
 
     @Unique
-    public void setContentChanged() { this.contentChanged++; }
+    public void needsToSync() { this.needsToSync = true; }
+
+    @Unique
+    public void setMainExtras(ExtendableItemStackDefaultedList mainExtras1) { this.mainExtras = mainExtras1; }
+
+    @Unique
+    public ExtendableItemStackDefaultedList getMainExtras() {return this.mainExtras; }
+
+    @Unique
+    public List<ItemStack> getCombinedMainNoHotbar() {
+        return Stream.concat(this.main.subList(9, 36).stream(), this.mainExtras.stream()).collect(Collectors.toList());
+    }
+
+    @Unique
+    public int getLastEmptySlot() {
+        for(int i = this.size(); i >= 0; i--) {
+            if(this.getStack(i).isEmpty()) return i;
+        }
+        return -1;
+    }
+
+    @Unique
+    public void swapInventory(int page) {
+        if(page > 1) {
+            int startIndex = 27 * (page - 2);
+            ArrayList<ItemStack> stack;
+            stack = new ArrayList<>(this.getMainExtras()
+                    .subList(startIndex, startIndex + 27));
+            for(int i = 0; i < 27; i++) {
+                this.setStack(startIndex + i + 41, this.getStack(i + 9));
+                this.setStack(i + 9, stack.get(i));
+            }
+            this.setContentChanged();
+        }
+        if(this.player instanceof ClientPlayerEntity) {
+            PacketByteBuf buf = PacketByteBufs.create();
+            buf.writeInt(page);
+            ClientPlayNetworking.send(Packets.SWAP_PACKET_ID, buf);
+        }
+    }
+
+    @Unique
+    public void sort(boolean ascending, int page, SortingType sortingType) {
+        this.swapInventory(page);
+        ArrayList<ItemStack> stacks = new ArrayList<>();
+        int emptySlots = 0;
+        for(int i = this.main.size() - 1; i >= 9; i--) {
+            this.insertStack(this.removeStack(i));
+        }
+        this.setContentChanged();
+        for(int i = this.getMainExtras().size() - 1; i >= 0; i--) {
+            this.insertStack(this.removeExtrasStack(i));
+        }
+        this.setContentChanged();
+        for(ItemStack stack : this.getCombinedMainNoHotbar()) {
+            if (stack.isEmpty()) emptySlots++;
+            else stacks.add(stack);
+        }
+        sortingType.sort(stacks, ascending);
+        for(int i = 0; i < emptySlots; i++) {
+            stacks.add(ItemStack.EMPTY);
+        }
+        for(int i = 0; i < stacks.size(); i++) {
+            this.setStack(i + (i > 26 ? 14 : 9), stacks.get(i));
+        }
+        this.setContentChanged();
+        this.swapInventory(page);
+        if(this.player instanceof ClientPlayerEntity) {
+            PacketByteBuf buf = PacketByteBufs.create();
+            buf.writeBoolean(ascending);
+            buf.writeInt(page);
+            buf.writeInt(sortingType.ordinal());
+            ClientPlayNetworking.send(Packets.SORT_PACKET_ID, buf);
+        }
+    }
 }

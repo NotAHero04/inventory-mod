@@ -4,6 +4,7 @@
   "package": "com.negativeonehero.inventorymod.mixin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
+    "InventoriesMixin",
     "InventoryMixin",
     "ItemMixin",
     "ItemStackMixin",
