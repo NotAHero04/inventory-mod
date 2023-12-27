@@ -1,4 +1,9 @@
 accessWidener v2 named
+mutable field net/minecraft/entity/player/PlayerInventory main Lnet/minecraft/util/collection/DefaultedList;
+accessible field net/minecraft/entity/player/PlayerInventory combinedInventory Ljava/util/List;
+mutable field net/minecraft/entity/player/PlayerInventory combinedInventory Ljava/util/List;
+accessible field net/minecraft/util/collection/DefaultedList delegate Ljava/util/List;
+mutable field net/minecraft/util/collection/DefaultedList delegate Ljava/util/List;
+accessible field net/minecraft/util/collection/DefaultedList initialElement Ljava/lang/Object;
 accessible field net/minecraft/entity/player/PlayerEntity inventory Lnet/minecraft/entity/player/PlayerInventory;
-mutable field net/minecraft/entity/player/PlayerEntity inventory Lnet/minecraft/entity/player/PlayerInventory;
 accessible field net/minecraft/client/gui/screen/ingame/CreativeInventoryScreen selectedTab Lnet/minecraft/item/ItemGroup;
