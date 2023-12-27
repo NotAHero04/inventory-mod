@@ -3,7 +3,7 @@ package com.negativeonehero.inventorymod.mixin;
 import net.minecraft.client.item.TooltipContext;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -25,15 +25,15 @@ public abstract class ItemStackMixin {
     @Shadow
     public abstract int getCount();
 
-    @Inject(at = @At("TAIL"), method = "<init>(Lnet/minecraft/nbt/NbtCompound;)V")
-    void onDeserialization(NbtCompound tag, CallbackInfo callbackInformation) {
+    @Inject(at = @At("TAIL"), method = "<init>(Lnet/minecraft/nbt/CompoundTag;)V")
+    void onDeserialization(CompoundTag tag, CallbackInfo callbackInformation) {
         if (tag.contains("CountInteger")) {
             this.count = tag.getInt("CountInteger");
         }
     }
 
-    @Inject(at = @At ("TAIL"), method = "writeNbt")
-    void onSerialization(NbtCompound tag, CallbackInfoReturnable<NbtCompound> callbackInformationReturnable) {
+    @Inject(at = @At ("TAIL"), method = "toTag")
+    void onSerialization(CompoundTag tag, CallbackInfoReturnable<CompoundTag> callbackInformationReturnable) {
         if (this.count > Byte.MAX_VALUE) {
             tag.putInt("CountInteger", this.count);
             tag.putByte("Count", Byte.MAX_VALUE);
@@ -45,8 +45,8 @@ public abstract class ItemStackMixin {
         if (this.getCount() > 1000) {
             List<Text> texts = cir.getReturnValue();
             MutableText text = (MutableText) texts.get(0);
-            texts.set(0, text.append(((MutableText) Text.of(" x")).formatted(Formatting.GRAY))
-                    .append(((MutableText)Text.of(NumberFormat.getNumberInstance(Locale.US).format(this.getCount()))).formatted(Formatting.GRAY)));
+            texts.set(0, text.append(((MutableText) Text.method_30163(" x")).formatted(Formatting.GRAY))
+                    .append(((MutableText)Text.method_30163(NumberFormat.getNumberInstance(Locale.US).format(this.getCount()))).formatted(Formatting.GRAY)));
         }
     }
 }

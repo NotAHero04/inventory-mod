@@ -89,8 +89,8 @@ public class ScreenHandlerMixin {
                 slot = this.slots.get(i);
                 itemStack = slot.getStack();
                 if (itemStack.isEmpty() && slot.canInsert(stack)) {
-                    if (stack.getCount() > slot.getMaxItemCount()) {
-                        slot.setStack(stack.split(slot.getMaxItemCount()));
+                    if (stack.getCount() > slot.getMaxStackAmount()) {
+                        slot.setStack(stack.split(slot.getMaxStackAmount()));
                     } else {
                         slot.setStack(stack.split(stack.getCount()));
                     }

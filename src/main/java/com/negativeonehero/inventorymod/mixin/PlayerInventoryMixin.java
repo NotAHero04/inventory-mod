@@ -9,8 +9,8 @@ import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtList;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.crash.CrashException;
@@ -108,37 +108,37 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
      * @reason
      */
     @Overwrite
-    public NbtList writeNbt(NbtList nbtList) {
+    public ListTag serialize(ListTag ListTag) {
         int i;
-        NbtCompound nbtCompound;
+        CompoundTag CompoundTag;
         for(i = 0; i < this.main.size(); ++i) {
             if (!this.main.get(i).isEmpty()) {
-                nbtCompound = new NbtCompound();
-                nbtCompound.putInt("Slot", invSlotFromMain(i));
-                this.main.get(i).writeNbt(nbtCompound);
-                nbtList.add(nbtCompound);
+                CompoundTag = new CompoundTag();
+                CompoundTag.putInt("Slot", invSlotFromMain(i));
+                this.main.get(i).toTag(CompoundTag);
+                ListTag.add(CompoundTag);
             }
         }
 
         for(i = 0; i < this.armor.size(); ++i) {
             if (!this.armor.get(i).isEmpty()) {
-                nbtCompound = new NbtCompound();
-                nbtCompound.putInt("Slot", i + 36);
-                this.armor.get(i).writeNbt(nbtCompound);
-                nbtList.add(nbtCompound);
+                CompoundTag = new CompoundTag();
+                CompoundTag.putInt("Slot", i + 36);
+                this.armor.get(i).toTag(CompoundTag);
+                ListTag.add(CompoundTag);
             }
         }
 
         for(i = 0; i < this.offHand.size(); ++i) {
             if (!this.offHand.get(i).isEmpty()) {
-                nbtCompound = new NbtCompound();
-                nbtCompound.putInt("Slot", i + 40);;
-                this.offHand.get(i).writeNbt(nbtCompound);
-                nbtList.add(nbtCompound);
+                CompoundTag = new CompoundTag();
+                CompoundTag.putInt("Slot", i + 40);;
+                this.offHand.get(i).toTag(CompoundTag);
+                ListTag.add(CompoundTag);
             }
         }
 
-        return nbtList;
+        return ListTag;
     }
 
     /**
@@ -146,15 +146,15 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
      * @reason
      */
     @Overwrite
-    public void readNbt(NbtList nbtList) {
+    public void deserialize(ListTag ListTag) {
         this.main.clear();
         this.armor.clear();
         this.offHand.clear();
 
-        for (int i = 0; i < nbtList.size(); ++i) {
-            NbtCompound nbtCompound = nbtList.getCompound(i);
-            int j = nbtCompound.getInt("Slot");
-            ItemStack itemStack = ItemStack.fromNbt(nbtCompound);
+        for (int i = 0; i < ListTag.size(); ++i) {
+            CompoundTag CompoundTag = ListTag.getCompound(i);
+            int j = CompoundTag.getInt("Slot");
+            ItemStack itemStack = ItemStack.fromTag(CompoundTag);
             if (!itemStack.isEmpty()) {
                 if (j >= 40 && j < this.offHand.size() + 40) {
                     this.offHand.set(0, itemStack);
