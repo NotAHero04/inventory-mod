@@ -43,6 +43,10 @@ public class ExtendableItemStackDefaultedList extends DefaultedList<ItemStack> {
         return false;
     }
 
+    public void removeRange(int startIndex, int endIndex) {
+        this.delegate.subList(startIndex, endIndex).clear();
+    }
+
     @Override
     public @NotNull ItemStack get(int index) {
         return this.delegate.get(index);

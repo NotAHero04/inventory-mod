@@ -1,5 +1,6 @@
 package com.negativeonehero.inventorymod.mixin;
 
+import com.negativeonehero.inventorymod.InventoryMod;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.util.Formatting;
@@ -38,7 +39,7 @@ public class DrawContextMixin {
                     newText = Formatting.YELLOW + formatDouble(count / 1000d, 1) + "K";
             }
             catch (NumberFormatException e) {
-                System.getLogger("Inventory Mod").log(System.Logger.Level.WARNING, "Failed to parse text!");
+                InventoryMod.LOGGER.warn("Failed to parse text!");
             }
 
             float scale = 0.55f;

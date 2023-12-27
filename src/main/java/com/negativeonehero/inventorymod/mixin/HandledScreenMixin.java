@@ -10,6 +10,7 @@ import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.ItemGroups;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
@@ -65,7 +66,7 @@ public abstract class HandledScreenMixin extends Screen {
                 .tooltip(Tooltip.of(Text.of("Page " + (page + 1))))
                 .build();
         this.addDrawableChild(this.nextButton);
-        this.functionButton = ButtonWidget.builder(Text.of("Page " + page), button -> {
+        this.functionButton = ButtonWidget.builder(Text.of(""), button -> {
             this.sorting = !this.sorting;
             this.updateTooltip();
                 })
@@ -81,6 +82,7 @@ public abstract class HandledScreenMixin extends Screen {
                 .size(92, 16)
                 .build();
         this.addDrawableChild(this.sortingTypeButton);
+        this.updateTooltip();
     }
 
     @Unique
@@ -112,24 +114,23 @@ public abstract class HandledScreenMixin extends Screen {
         if(sorting) {
             this.previousButton.setTooltip(Tooltip.of(Text.of("Sort Descending")));
             this.nextButton.setTooltip(Tooltip.of(Text.of("Sort Ascending")));
-            this.functionButton.setMessage(Text.of("Sorting"));
         } else {
             this.previousButton.setTooltip(Tooltip.of(Text.of("Page " + (page - 1))));
             this.nextButton.setTooltip(Tooltip.of(Text.of("Page " + (page + 1))));
-            this.functionButton.setMessage(Text.of("Page " + page));
         }
     }
 
     @Unique
     public void sort(boolean ascending) {
         this.swapInventory(this.page);
-        ArrayList<ItemStack> stacks = new ArrayList<>();
+        SimpleInventory inventory1 = new SimpleInventory(this.inventory.main.size());
         int emptySlots = 0;
         for(int i = 9; i < this.inventory.main.size(); i++) {
             ItemStack stack = this.inventory.main.get(i);
             if (stack.isEmpty()) emptySlots++;
-            else stacks.add(stack);
+            else inventory1.addStack(stack);
         }
+        ArrayList<ItemStack> stacks = new ArrayList<>(inventory1.heldStacks);
         this.sortingType.sort(stacks, ascending);
         for(int i = 0; i < emptySlots; i++) {
             stacks.add(ItemStack.EMPTY);
@@ -171,9 +172,14 @@ public abstract class HandledScreenMixin extends Screen {
     }
 
     @Inject(method = "tick", at = @At(value = "HEAD"))
-    public void tickButtons(CallbackInfo ci) {
-        if(!this.sorting && !this.nextButton.visible && 27 * page + 9 < this.inventory.main.size()) {
+    public void tick(CallbackInfo ci) {
+        if(!this.sorting && !this.nextButton.visible && 27 * page + 9 < ((IPlayerInventory) this.inventory).getLastEmptySlot()) {
             this.nextButton.visible = true;
+        }
+        if(sorting) {
+            this.functionButton.setMessage(Text.of("Sorting"));
+        } else {
+            this.functionButton.setMessage(Text.of("Page " + page + "/" + this.inventory.main.size() / 27));
         }
     }
 

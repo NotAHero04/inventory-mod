@@ -74,21 +74,33 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
         return invSlot - (invSlot > 35 ? 5 : 0);
     }
 
+    @Unique
+    public int getLastEmptySlot() {
+        int ret = 0;
+        int a = 0;
+        while((a = this.getEmptySlotFromIndex(a + 1)) != -1) ret = a;
+        return ret;
+    }
+
     /**
      * @author
      * @reason
      */
     @Overwrite
     public int getEmptySlot() {
-        for(int i = 0; i < this.main.size(); ++i) {
+        int emptySlot = this.getEmptySlotFromIndex(0);
+        if(emptySlot == -1) for(int k = 0; k < 27; k++) this.main.add(ItemStack.EMPTY);
+        return this.getEmptySlot();
+    }
+
+    @Unique
+    public int getEmptySlotFromIndex(int index) {
+        for(int i = index; i < this.main.size(); ++i) {
             if (this.main.get(i).isEmpty()) {
                 return invSlotFromMain(i);
             }
         }
-        // Add 27 stacks at once
-        for(int k = 0; k < 27; k++)
-            this.main.add(ItemStack.EMPTY);
-        return this.getEmptySlot();
+        return -1;
     }
 
     /**
