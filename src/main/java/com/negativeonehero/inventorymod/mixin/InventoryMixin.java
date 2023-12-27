@@ -12,7 +12,7 @@ public interface InventoryMixin {
      * @reason
      */
     @Overwrite
-    default int getMaxCountPerStack() {
+    default int getInvMaxStackAmount() {
         return Integer.MAX_VALUE;
     }
 }

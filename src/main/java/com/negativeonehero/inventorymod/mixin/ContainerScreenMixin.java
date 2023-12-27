@@ -3,15 +3,15 @@ package com.negativeonehero.inventorymod.mixin;
 import com.negativeonehero.inventorymod.SortingType;
 import com.negativeonehero.inventorymod.impl.IPlayerInventory;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screen.ingame.ContainerScreen;
 import net.minecraft.client.gui.screen.ingame.CreativeInventoryScreen;
-import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
+import net.minecraft.client.gui.widget.AbstractPressableButtonWidget;
 import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.container.Container;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemGroup;
 import net.minecraft.item.ItemStack;
-import net.minecraft.screen.ScreenHandler;
 import net.minecraft.text.Text;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -21,18 +21,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.ArrayList;
 
-@Mixin(HandledScreen.class)
-public abstract class HandledScreenMixin extends Screen {
+@Mixin(ContainerScreen.class)
+public abstract class ContainerScreenMixin extends Screen {
     @Unique
     private PlayerInventory inventory;
     @Unique
-    private ButtonWidget previousButton;
+    private AbstractPressableButtonWidget previousButton;
     @Unique
-    private ButtonWidget nextButton;
+    private AbstractPressableButtonWidget nextButton;
     @Unique
-    private ButtonWidget functionButton;
+    private AbstractPressableButtonWidget functionButton;
     @Unique
-    private ButtonWidget sortingTypeButton;
+    private AbstractPressableButtonWidget sortingTypeButton;
     @Unique
     private boolean sorting = false;
     @Unique
@@ -40,54 +40,71 @@ public abstract class HandledScreenMixin extends Screen {
     @Unique
     private SortingType sortingType = SortingType.COUNT;
 
-    // method_30163() = of() in 1.16.2+ mappings
     @Unique
-    private Text previousTooltip = Text.method_30163("");
+    private String previousTooltip = "";
     @Unique
-    private Text nextTooltip = Text.method_30163("");
+    private String nextTooltip = "";
+    @Unique
+    private final ContainerScreen screen = (ContainerScreen) (Object) this;
 
-    protected HandledScreenMixin(Text title) {
+    protected ContainerScreenMixin(Text title) {
         super(title);
     }
 
     @Inject(method = "<init>", at = @At(value = "TAIL"))
-    public void constructor(ScreenHandler handler, PlayerInventory inventory, Text title, CallbackInfo ci) {
-        this.inventory = inventory;
+    public void constructor(Container container, PlayerInventory playerInventory, Text name, CallbackInfo ci) {
+        this.inventory = playerInventory;
     }
 
     @Inject(method = "init", at = @At(value = "TAIL"))
     public void init(CallbackInfo ci) {
-        this.previousButton = new ButtonWidget(10, 10, 16, 16, Text.method_30163("<"),
-                button -> this.update(false), (button, matrices, mouseX, mouseY) -> {
-            if (mouseX >= button.x && mouseX <= button.x+button.getWidth()
-                    && mouseY >= button.y && mouseY <= button.y+button.getHeight())
-                this.renderTooltip(matrices, this.previousTooltip, mouseX, mouseY);
-                });
-        this.children.add(this.previousButton);
-        this.nextButton = new ButtonWidget(86, 10, 16, 16, Text.method_30163(">"),
-                button -> this.update(true), (button, matrices, mouseX, mouseY) -> {
-            if (mouseX >= button.x && mouseX <= button.x+button.getWidth()
-                    && mouseY >= button.y && mouseY <= button.y+button.getHeight())
-                this.renderTooltip(matrices, this.nextTooltip, mouseX, mouseY);
-        });
-        this.children.add(this.nextButton);
-        this.functionButton = new ButtonWidget(26, 10, 60, 16, Text.method_30163("Page " + page),
+        this.previousButton = new AbstractPressableButtonWidget(10, 10, 16, 16, "<") {
+            @Override
+            public void onPress() {
+                update(false);
+            }
+
+            @Override
+            public void renderToolTip(int mouseX, int mouseY) {
+                if (mouseX >= this.x && mouseX <= this.x+this.width
+                        && mouseY >= this.y && mouseY <= this.y+this.height)
+                    screen.renderTooltip(previousTooltip, mouseX, mouseY);
+            }
+        };
+        this.nextButton = new AbstractPressableButtonWidget(86, 10, 16, 16, ">") {
+            @Override
+            public void onPress() {
+                update(true);
+            }
+
+            @Override
+            public void renderToolTip(int mouseX, int mouseY) {
+                if (mouseX >= this.x && mouseX <= this.x+this.width
+                        && mouseY >= this.y && mouseY <= this.y+this.height)
+                    screen.renderTooltip(nextTooltip, mouseX, mouseY);
+            }
+        };
+        this.functionButton = new ButtonWidget(26, 10, 60, 16, "Page " + page,
                 button -> {
                     this.sorting = !this.sorting;
                     this.updateTooltip();
                 });
-        this.children.add(this.functionButton);
         this.sortingTypeButton = new ButtonWidget(10, 26, 92, 16, this.sortingType.message,
                 button -> {
                     this.sortingType = this.sortingType.next();
                     button.setMessage(this.sortingType.message);
                 });
-        this.children.add(this.sortingTypeButton);
         this.addButton(this.previousButton);
         this.addButton(this.functionButton);
         this.addButton(this.nextButton);
         this.addButton(this.sortingTypeButton);
         this.updateTooltip();
+    }
+
+    @Inject(method = "render", at = @At("TAIL"))
+    public void render(int mouseX, int mouseY, float delta, CallbackInfo ci) {
+        if (this.previousButton.visible) this.previousButton.renderToolTip(mouseX, mouseY);
+        if (this.nextButton.visible) this.nextButton.renderToolTip(mouseX, mouseY);
     }
 
     @Unique
@@ -99,12 +116,12 @@ public abstract class HandledScreenMixin extends Screen {
                 if (this.page > 1) this.swapInventory(this.page);
                 this.page++;
                 this.previousButton.visible = true;
-                if (this.page >= this.inventory.size() / 27) this.nextButton.visible = false;
+                if (this.page >= this.inventory.getInvSize() / 27) this.nextButton.visible = false;
                 this.swapInventory(this.page);
             } else {
                 this.swapInventory(this.page);
                 this.page--;
-                if (this.page < this.inventory.size() / 27) {
+                if (this.page < this.inventory.getInvSize() / 27) {
                     this.nextButton.visible = true;
                     if (this.page <= 1) this.previousButton.visible = false;
                     else this.swapInventory(this.page);
@@ -117,13 +134,13 @@ public abstract class HandledScreenMixin extends Screen {
     @Unique
     private void updateTooltip() {
         if(sorting) {
-            this.previousTooltip = Text.method_30163("Sort Descending");
-            this.nextTooltip = Text.method_30163("Sort Ascending");
-            this.functionButton.setMessage(Text.method_30163("Sorting"));
+            this.previousTooltip = "Sort Descending";
+            this.nextTooltip = "Sort Ascending";
+            this.functionButton.setMessage("Sorting");
         } else {
-            this.previousTooltip = Text.method_30163("Page " + (page - 1));
-            this.nextTooltip = Text.method_30163("Page " + (page + 1));
-            this.functionButton.setMessage(Text.method_30163("Page " + page));
+            this.previousTooltip = "Page " + (page - 1);
+            this.nextTooltip = "Page " + (page + 1);
+            this.functionButton.setMessage("Page " + page);
         }
     }
 
@@ -142,7 +159,7 @@ public abstract class HandledScreenMixin extends Screen {
             stacks.add(ItemStack.EMPTY);
         }
         for(int i = 0; i < stacks.size(); i++) {
-            this.inventory.setStack(i + (i > 26 ? 14 : 9), stacks.get(i));
+            this.inventory.setInvStack(i + (i > 26 ? 14 : 9), stacks.get(i));
         }
         ((IPlayerInventory) this.inventory).setContentChanged();
         this.swapInventory(this.page);
@@ -162,7 +179,7 @@ public abstract class HandledScreenMixin extends Screen {
         } else {
             this.previousButton.visible = this.page > 1 && visible;
             this.functionButton.visible = visible;
-            this.nextButton.visible = this.page < this.inventory.size() / 27 && visible;
+            this.nextButton.visible = this.page < this.inventory.getInvSize() / 27 && visible;
             this.sortingTypeButton.visible = false;
         }
     }
@@ -173,7 +190,7 @@ public abstract class HandledScreenMixin extends Screen {
     }
 
     @Inject(method = "render", at = @At(value = "HEAD"))
-    public void updateButtonsVisibility(MatrixStack matrices, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+    public void updateButtonsVisibility(int mouseX, int mouseY, float delta, CallbackInfo ci) {
         this.updateButtons();
     }
 
@@ -191,8 +208,8 @@ public abstract class HandledScreenMixin extends Screen {
             ArrayList<ItemStack> stack;
             stack = new ArrayList<>(this.inventory.main.subList(startIndex, startIndex + 27));
             for(int i = 0; i < 27; i++) {
-                this.inventory.setStack(startIndex + i + 5, this.inventory.getStack(i + 9));
-                this.inventory.setStack(i + 9, stack.get(i));
+                this.inventory.setInvStack(startIndex + i + 5, this.inventory.getInvStack(i + 9));
+                this.inventory.setInvStack(i + 9, stack.get(i));
             }
             ((IPlayerInventory) this.inventory).setContentChanged();
         }

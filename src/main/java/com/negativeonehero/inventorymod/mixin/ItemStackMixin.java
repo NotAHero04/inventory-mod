@@ -4,7 +4,7 @@ import net.minecraft.client.item.TooltipContext;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.text.MutableText;
+import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import org.spongepowered.asm.mixin.Mixin;
@@ -44,9 +44,9 @@ public abstract class ItemStackMixin {
     private void addOverflowTooltip(PlayerEntity player, TooltipContext context, CallbackInfoReturnable<List<Text>> cir) {
         if (this.getCount() > 1000) {
             List<Text> texts = cir.getReturnValue();
-            MutableText text = (MutableText) texts.get(0);
-            texts.set(0, text.append(((MutableText) Text.method_30163(" x")).formatted(Formatting.GRAY))
-                    .append(((MutableText)Text.method_30163(NumberFormat.getNumberInstance(Locale.US).format(this.getCount()))).formatted(Formatting.GRAY)));
+            Text text = texts.get(0);
+            texts.set(0, text.append((new LiteralText(" x")).formatted(Formatting.GRAY))
+                    .append((new LiteralText(NumberFormat.getNumberInstance(Locale.US).format(this.getCount()))).formatted(Formatting.GRAY)));
         }
     }
 }

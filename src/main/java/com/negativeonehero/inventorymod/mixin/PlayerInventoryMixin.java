@@ -12,7 +12,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.collection.DefaultedList;
+import net.minecraft.util.DefaultedList;
 import net.minecraft.util.crash.CrashException;
 import net.minecraft.util.crash.CrashReport;
 import net.minecraft.util.crash.CrashReportSection;
@@ -96,7 +96,7 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
      * @reason
      */
     @Overwrite
-    public void setStack(int slot, ItemStack stack) {
+    public void setInvStack(int slot, ItemStack stack) {
         // The OG method avoids using conditionals
         if(slot == 40) this.offHand.set(0, stack);
         else if(slot >= 36 && slot < 40) this.armor.set(slot - 36, stack);
@@ -177,9 +177,9 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
 
     @Overwrite
     public int getOccupiedSlotWithRoomForStack(ItemStack stack) {
-        if (this.canStackAddMore(this.getStack(this.selectedSlot), stack)) {
+        if (this.canStackAddMore(this.getInvStack(this.selectedSlot), stack)) {
             return this.selectedSlot;
-        } else if (this.canStackAddMore(this.getStack(40), stack)) {
+        } else if (this.canStackAddMore(this.getInvStack(40), stack)) {
             return 40;
         } else {
             for(int i = 0; i < this.main.size(); ++i) {
@@ -218,7 +218,7 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
      * @reason
      */
     @Overwrite
-    public ItemStack getStack(int slot) {
+    public ItemStack getInvStack(int slot) {
         if(slot == 40) return this.offHand.get(0);
         if(slot >= 36 && slot < 40) return this.armor.get(slot - 36);
         return this.main.get(mainSlotFromInv(slot));
@@ -293,7 +293,7 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
      * @reason
      */
     @Overwrite
-    public int size() {
+    public int getInvSize() {
         return this.main.size() + this.armor.size() + this.offHand.size();
     }
 

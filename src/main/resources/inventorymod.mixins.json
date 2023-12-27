@@ -12,8 +12,8 @@
     "ServerPlayNetworkHandlerMixin"
   ],
   "client": [
+    "ContainerScreenMixin",
     "CreativeInventoryScreenMixin",
-    "HandledScreenMixin",
     "InventoryScreenMixin",
     "ItemRendererMixin"
   ],

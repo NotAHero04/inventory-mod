@@ -2,7 +2,6 @@ package com.negativeonehero.inventorymod;
 
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.text.Text;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -10,17 +9,17 @@ import java.util.Comparator;
 
 public enum SortingType {
     COUNT(Comparator.comparingInt(ItemStack::getCount).thenComparing(stack -> stack.getName().getString()),
-            Text.method_30163("Sort by Count")),
+            "Sort by Count"),
     NAME(Comparator.comparing(stack -> stack.getName().getString()),
-            Text.method_30163("Sort by Name")),
+            "Sort by Name"),
     ID(Comparator.comparingInt((ItemStack i) -> Item.getRawId(i.getItem()))
             .thenComparing(stack -> stack.getName().getString()),
-            Text.method_30163("Sort by ID"));
+            "Sort by ID");
     private final Comparator<ItemStack> comparator;
     private static final SortingType[] types = values();
-    public final Text message;
+    public final String message;
 
-    SortingType(Comparator<ItemStack> comparator, Text message) {
+    SortingType(Comparator<ItemStack> comparator, String message) {
         this.comparator = comparator;
         this.message = message;
     }

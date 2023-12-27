@@ -1,8 +1,8 @@
 package com.negativeonehero.inventorymod.mixin;
 
+import net.minecraft.container.Container;
+import net.minecraft.container.Slot;
 import net.minecraft.item.ItemStack;
-import net.minecraft.screen.ScreenHandler;
-import net.minecraft.screen.slot.Slot;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import java.util.List;
 import java.util.Set;
 
-@Mixin(ScreenHandler.class)
+@Mixin(Container.class)
 public class ScreenHandlerMixin {
 
     @Final

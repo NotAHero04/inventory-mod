@@ -2,7 +2,7 @@ package com.negativeonehero.inventorymod;
 
 import com.google.common.collect.Lists;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.collection.DefaultedList;
+import net.minecraft.util.DefaultedList;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
