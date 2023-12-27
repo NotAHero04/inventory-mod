@@ -11,7 +11,6 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.container.Container;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemGroup;
-import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -19,12 +18,12 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.ArrayList;
-
 @Mixin(ContainerScreen.class)
-public abstract class ContainerScreenMixin extends Screen {
+public abstract class ContainerScreenMixin<T extends Container> extends Screen {
     @Unique
     private PlayerInventory inventory;
+    @Unique
+    private IPlayerInventory iPlayerInventory;
     @Unique
     private AbstractPressableButtonWidget previousButton;
     @Unique
@@ -39,6 +38,8 @@ public abstract class ContainerScreenMixin extends Screen {
     private int page = 1;
     @Unique
     private SortingType sortingType = SortingType.COUNT;
+    @Unique
+    private int ticksSinceSorting = 0;
 
     @Unique
     private String previousTooltip = "";
@@ -52,8 +53,9 @@ public abstract class ContainerScreenMixin extends Screen {
     }
 
     @Inject(method = "<init>", at = @At(value = "TAIL"))
-    public void constructor(Container container, PlayerInventory playerInventory, Text name, CallbackInfo ci) {
-        this.inventory = playerInventory;
+    public void constructor(T handler, PlayerInventory inventory, Text title, CallbackInfo ci) {
+        this.inventory = inventory;
+        this.iPlayerInventory = (IPlayerInventory) inventory;
     }
 
     @Inject(method = "init", at = @At(value = "TAIL"))
@@ -95,8 +97,8 @@ public abstract class ContainerScreenMixin extends Screen {
                     button.setMessage(this.sortingType.message);
                 });
         this.addButton(this.previousButton);
-        this.addButton(this.functionButton);
         this.addButton(this.nextButton);
+        this.addButton(this.functionButton);
         this.addButton(this.sortingTypeButton);
         this.updateTooltip();
     }
@@ -110,21 +112,23 @@ public abstract class ContainerScreenMixin extends Screen {
     @Unique
     private void update(boolean next) {
         if (sorting) {
-            this.sort(next);
+            this.iPlayerInventory.sort(next, this.page, this.sortingType);
+            this.previousButton.active = false;
+            this.nextButton.active = false;
         } else {
             if(next) {
-                if (this.page > 1) this.swapInventory(this.page);
+                if (this.page > 1) this.iPlayerInventory.swapInventory(this.page);
                 this.page++;
                 this.previousButton.visible = true;
                 if (this.page >= this.inventory.getInvSize() / 27) this.nextButton.visible = false;
-                this.swapInventory(this.page);
+                this.iPlayerInventory.swapInventory(this.page);
             } else {
-                this.swapInventory(this.page);
+                this.iPlayerInventory.swapInventory(this.page);
                 this.page--;
                 if (this.page < this.inventory.getInvSize() / 27) {
                     this.nextButton.visible = true;
                     if (this.page <= 1) this.previousButton.visible = false;
-                    else this.swapInventory(this.page);
+                    else this.iPlayerInventory.swapInventory(this.page);
                 }
             }
             this.updateTooltip();
@@ -136,33 +140,10 @@ public abstract class ContainerScreenMixin extends Screen {
         if(sorting) {
             this.previousTooltip = "Sort Descending";
             this.nextTooltip = "Sort Ascending";
-            this.functionButton.setMessage("Sorting");
         } else {
             this.previousTooltip = "Page " + (page - 1);
             this.nextTooltip = "Page " + (page + 1);
-            this.functionButton.setMessage("Page " + page);
         }
-    }
-
-    @Unique
-    public void sort(boolean ascending) {
-        this.swapInventory(this.page);
-        ArrayList<ItemStack> stacks = new ArrayList<>();
-        int emptySlots = 0;
-        for(int i = 9; i < this.inventory.main.size(); i++) {
-            ItemStack stack = this.inventory.main.get(i);
-            if (stack.isEmpty()) emptySlots++;
-            else stacks.add(stack);
-        }
-        this.sortingType.sort(stacks, ascending);
-        for(int i = 0; i < emptySlots; i++) {
-            stacks.add(ItemStack.EMPTY);
-        }
-        for(int i = 0; i < stacks.size(); i++) {
-            this.inventory.setInvStack(i + (i > 26 ? 14 : 9), stacks.get(i));
-        }
-        ((IPlayerInventory) this.inventory).setContentChanged();
-        this.swapInventory(this.page);
     }
 
     @SuppressWarnings("ConstantValue")
@@ -186,7 +167,7 @@ public abstract class ContainerScreenMixin extends Screen {
 
     @Inject(method = "removed", at = @At(value = "HEAD"))
     public void resetInventory(CallbackInfo ci) {
-        this.swapInventory(this.page);
+        this.iPlayerInventory.swapInventory(this.page);
     }
 
     @Inject(method = "render", at = @At(value = "HEAD"))
@@ -195,23 +176,23 @@ public abstract class ContainerScreenMixin extends Screen {
     }
 
     @Inject(method = "tick", at = @At(value = "HEAD"))
-    public void tickButtons(CallbackInfo ci) {
-        if(!this.sorting && !this.nextButton.visible && 27 * page + 9 < this.inventory.main.size()) {
+    public void tick(CallbackInfo ci) {
+        if(!this.sorting && !this.nextButton.visible && 27 * page + 14 < this.inventory.getInvSize()) {
             this.nextButton.visible = true;
         }
-    }
-
-    @Unique
-    public void swapInventory(int page) {
-        if(page > 1) {
-            int startIndex = 27 * (page - 1) + 9;
-            ArrayList<ItemStack> stack;
-            stack = new ArrayList<>(this.inventory.main.subList(startIndex, startIndex + 27));
-            for(int i = 0; i < 27; i++) {
-                this.inventory.setInvStack(startIndex + i + 5, this.inventory.getInvStack(i + 9));
-                this.inventory.setInvStack(i + 9, stack.get(i));
+        if(!this.previousButton.active) {
+            if(this.ticksSinceSorting >= 20 || !this.sorting) {
+                this.ticksSinceSorting = 0;
+                this.previousButton.active = true;
+                this.nextButton.active = true;
+            } else {
+                this.ticksSinceSorting++;
             }
-            ((IPlayerInventory) this.inventory).setContentChanged();
+        }
+        if(sorting) {
+            this.functionButton.setMessage("Sorting");
+        } else {
+            this.functionButton.setMessage("Page " + page + "/" + (this.inventory.getInvSize() - 14) / 27);
         }
     }
 }
