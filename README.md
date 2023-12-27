@@ -3,6 +3,8 @@
 |----------------------------------------------------------------------|----------------------------------------------------------------------|-------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|-----------------------------------------------------------------------------|----------------------------------------------------------------------|----------------------------------------------------------------------|
 | Not Maintained                                                       | Not Maintained                                                       | Not Maintained                                                                | Not Maintained                                                                    | Not Maintained                                                              | Not Maintained                                                       | Maintained                                                           |
 
+[![Github All Releases](https://img.shields.io/github/downloads/NotAHero04/inventory-mod/total.svg?style=flat)]()
+
 # Inventory Mod
 
 Rises from the ashes of [Infinitory](https://github.com/Furgl/Infinitory) and [Stacc](https://github.com/Devan-Kerman/Stacc).
