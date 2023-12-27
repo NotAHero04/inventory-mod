@@ -82,6 +82,10 @@ public abstract class HandledScreenMixin extends Screen {
                     button.setMessage(this.sortingType.message);
                 });
         this.children.add(this.sortingTypeButton);
+        this.addButton(this.previousButton);
+        this.addButton(this.functionButton);
+        this.addButton(this.nextButton);
+        this.addButton(this.sortingTypeButton);
         this.updateTooltip();
     }
 
