@@ -1,11 +1,10 @@
 package com.negativeonehero.inventorymod.mixin;
 
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.negativeonehero.inventorymod.InventoryMod;
 import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.item.ItemRenderer;
 import net.minecraft.util.Formatting;
-import net.minecraft.client.util.math.Matrix4f;
 import org.apache.commons.lang3.StringUtils;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -27,8 +26,8 @@ public class ItemRendererMixin {
         return df.format(n);
     }
 
-    @Redirect(method = "renderGuiItemOverlay(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/item/ItemStack;IILjava/lang/String;)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/font/TextRenderer;draw(Ljava/lang/String;FFIZLnet/minecraft/client/util/math/Matrix4f;Lnet/minecraft/client/render/VertexConsumerProvider;ZII)I"))
-    private int draw(TextRenderer renderer, String text, float x, float y, int color, boolean shadow, Matrix4f matrix, VertexConsumerProvider vertexConsumers, boolean seeThrough, int backgroundColor, int light) {
+    @Redirect(method = "renderGuiItemOverlay(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/item/ItemStack;IILjava/lang/String;)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/font/TextRenderer;drawWithShadow(Ljava/lang/String;FFI)I"))
+    private int draw(TextRenderer renderer, String text, float x, float y, int color) {
         try {
             String newText = text;
             try {
@@ -45,12 +44,15 @@ public class ItemRendererMixin {
             }
 
             float scale = 0.55f;
-            matrix.multiply(Matrix4f.scale(scale, scale, 1));
-            return renderer.draw(newText, (x+renderer.getStringWidth(text))/scale-renderer.getStringWidth(newText)-3, y/scale+4, color, shadow, matrix, vertexConsumers, seeThrough, backgroundColor, light);
+            GlStateManager.pushMatrix();
+            GlStateManager.scalef(scale, scale, 1);
+            int render = renderer.drawWithShadow(newText, (x+renderer.getStringWidth(text))/scale-renderer.getStringWidth(newText)-3, y/scale+4, color);
+            GlStateManager.popMatrix();
+            return render;
         }
         catch (Exception e) {
             e.printStackTrace();
-            return renderer.draw(text, x, y, color, shadow, matrix, vertexConsumers, seeThrough, backgroundColor, light);
+            return renderer.drawWithShadow(text, x, y, color);
         }
     }
 }
