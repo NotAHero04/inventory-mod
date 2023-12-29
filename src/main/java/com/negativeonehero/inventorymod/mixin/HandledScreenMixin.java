@@ -31,6 +31,8 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
     @Unique
     private PlayerInventory inventory;
     @Unique
+    private IPlayerInventory iPlayerInventory;
+    @Unique
     private ButtonWidget previousButton;
     @Unique
     private ButtonWidget nextButton;
@@ -52,6 +54,7 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
     @Inject(method = "<init>", at = @At(value = "TAIL"))
     public void constructor(T handler, PlayerInventory inventory, Text title, CallbackInfo ci) {
         this.inventory = inventory;
+        this.iPlayerInventory = (IPlayerInventory) inventory;
     }
 
     @Inject(method = "init", at = @At(value = "TAIL"))
@@ -130,9 +133,12 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
         for(int i = this.inventory.main.size() - 1; i >= 9; i--) {
             this.inventory.insertStack(this.inventory.removeStack(i));
         }
-        ((IPlayerInventory) this.inventory).setContentChanged();
-        for(int i = 9; i < this.inventory.main.size(); i++) {
-            ItemStack stack = this.inventory.main.get(i);
+        for(int i = this.iPlayerInventory.getMainExtras().size() - 1; i >= 0; i--) {
+            this.inventory.insertStack(this.iPlayerInventory.removeExtrasStack(i));
+        }
+        this.iPlayerInventory.setContentChanged();
+        for(int i = 9; i < this.inventory.size(); i++) {
+            ItemStack stack = this.inventory.getStack(i);
             if (stack.isEmpty()) emptySlots++;
             else stacks.add(stack);
         }
@@ -143,7 +149,7 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
         for(int i = 0; i < stacks.size(); i++) {
             this.inventory.setStack(i + (i > 26 ? 14 : 9), stacks.get(i));
         }
-        ((IPlayerInventory) this.inventory).setContentChanged();
+        this.iPlayerInventory.setContentChanged();
         this.swapInventory(this.page);
     }
 
@@ -178,24 +184,25 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
 
     @Inject(method = "tick", at = @At(value = "HEAD"))
     public void tick(CallbackInfo ci) {
-        if(!this.sorting && !this.nextButton.visible && 27 * page + 9 < this.inventory.main.size()) {
+        if(!this.sorting && !this.nextButton.visible && 27 * page + 14 < this.inventory.size()) {
             this.nextButton.visible = true;
         }
         if(sorting) {
             this.functionButton.setMessage(Text.of("Sorting"));
         } else {
-            this.functionButton.setMessage(Text.of("Page " + page + "/" + this.inventory.main.size() / 27));
+            this.functionButton.setMessage(Text.of("Page " + page + "/" + (this.inventory.size() - 14) / 27));
         }
     }
 
     @Unique
     public void swapInventory(int page) {
         if(page > 1) {
-            int startIndex = 27 * (page - 1) + 9;
+            int startIndex = 27 * (page - 2);
             ArrayList<ItemStack> stack;
-            stack = new ArrayList<>(this.inventory.main.subList(startIndex, startIndex + 27));
+            stack = new ArrayList<>(((IPlayerInventory) this.inventory).getMainExtras()
+                    .subList(startIndex, startIndex + 27));
             for(int i = 0; i < 27; i++) {
-                this.inventory.setStack(startIndex + i + 5, this.inventory.getStack(i + 9));
+                this.inventory.setStack(startIndex + i + 41, this.inventory.getStack(i + 9));
                 this.inventory.setStack(i + 9, stack.get(i));
             }
             ((IPlayerInventory) this.inventory).setContentChanged();
