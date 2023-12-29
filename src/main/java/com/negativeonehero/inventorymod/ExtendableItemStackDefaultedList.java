@@ -12,7 +12,7 @@ import java.util.Objects;
 public class ExtendableItemStackDefaultedList extends DefaultedList<ItemStack> {
     public final ArrayList<ItemStack> delegate;
     public @Nullable ItemStack initialElement;
-    protected ExtendableItemStackDefaultedList(ArrayList<ItemStack> delegate, @Nullable ItemStack initialElement) {
+    public ExtendableItemStackDefaultedList(ArrayList<ItemStack> delegate, @Nullable ItemStack initialElement) {
         super(delegate, initialElement);
         this.delegate = delegate;
         this.initialElement = initialElement;

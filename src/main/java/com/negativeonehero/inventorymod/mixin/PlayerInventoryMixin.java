@@ -298,8 +298,9 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     public void syncInventories(CallbackInfo ci) throws InterruptedException {
         if(this.needsToSync && this.player instanceof ServerPlayerEntity) {
             // Fixes race condition upon rejoining a world... by simply waiting
-            while(MinecraftClient.getInstance().player == null) Thread.sleep(500);
-            MinecraftClient.getInstance().player.inventory = (PlayerInventory) (Object) this;
+            while(MinecraftClient.getInstance().player == null) Thread.sleep(100);
+            MinecraftClient.getInstance().player.inventory.main = this.main;
+            MinecraftClient.getInstance().player.inventory.combinedInventory = this.combinedInventory;
             this.needsToSync = false;
         }
     }
