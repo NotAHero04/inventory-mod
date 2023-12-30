@@ -28,6 +28,7 @@
   "accessWidener" : "inventorymod.accesswidener",
   "depends": {
     "fabricloader": ">=0.15.0",
+    "fabric": "*",
     "minecraft": ">=1.19 <1.20"
   }
 }
