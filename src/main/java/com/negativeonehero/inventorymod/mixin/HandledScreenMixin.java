@@ -43,6 +43,8 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
     private int page = 1;
     @Unique
     private SortingType sortingType = SortingType.COUNT;
+    @Unique
+    private int ticksSinceSorting = 0;
 
     protected HandledScreenMixin(Text title) {
         super(title);
@@ -91,6 +93,8 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
     private void update(boolean next) {
         if (sorting) {
             this.iPlayerInventory.sort(next, this.page, this.sortingType);
+            this.previousButton.active = false;
+            this.nextButton.active = false;
         } else {
             if(next) {
                 if (this.page > 1) this.iPlayerInventory.swapInventory(this.page);
@@ -155,6 +159,15 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
     public void tick(CallbackInfo ci) {
         if(!this.sorting && !this.nextButton.visible && 27 * page + 14 < this.inventory.size()) {
             this.nextButton.visible = true;
+        }
+        if(!this.previousButton.active) {
+            if(this.ticksSinceSorting >= 20 || !this.sorting) {
+                this.ticksSinceSorting = 0;
+                this.previousButton.active = true;
+                this.nextButton.active = true;
+            } else {
+                this.ticksSinceSorting++;
+            }
         }
         if(sorting) {
             this.functionButton.setMessage(Text.of("Sorting"));
