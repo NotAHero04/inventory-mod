@@ -13,7 +13,6 @@ import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemGroups;
-import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.text.Text;
@@ -22,8 +21,6 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-import java.util.ArrayList;
 
 @Environment(EnvType.CLIENT)
 @Mixin(HandledScreen.class)
@@ -93,21 +90,21 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
     @Unique
     private void update(boolean next) {
         if (sorting) {
-            this.sort(next);
+            this.iPlayerInventory.sort(next, this.page, this.sortingType);
         } else {
             if(next) {
-                if (this.page > 1) this.swapInventory(this.page);
+                if (this.page > 1) this.iPlayerInventory.swapInventory(this.page);
                 this.page++;
                 this.previousButton.visible = true;
                 if (this.page >= this.inventory.size() / 27) this.nextButton.visible = false;
-                this.swapInventory(this.page);
+                this.iPlayerInventory.swapInventory(this.page);
             } else {
-                this.swapInventory(this.page);
+                this.iPlayerInventory.swapInventory(this.page);
                 this.page--;
                 if (this.page < this.inventory.size() / 27) {
                     this.nextButton.visible = true;
                     if (this.page <= 1) this.previousButton.visible = false;
-                    else this.swapInventory(this.page);
+                    else this.iPlayerInventory.swapInventory(this.page);
                 }
             }
             this.updateTooltip();
@@ -123,34 +120,6 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
             this.previousButton.setTooltip(Tooltip.of(Text.of("Page " + (page - 1))));
             this.nextButton.setTooltip(Tooltip.of(Text.of("Page " + (page + 1))));
         }
-    }
-
-    @Unique
-    public void sort(boolean ascending) {
-        this.swapInventory(this.page);
-        ArrayList<ItemStack> stacks = new ArrayList<>();
-        int emptySlots = 0;
-        for(int i = this.inventory.main.size() - 1; i >= 9; i--) {
-            this.inventory.insertStack(this.inventory.removeStack(i));
-        }
-        for(int i = this.iPlayerInventory.getMainExtras().size() - 1; i >= 0; i--) {
-            this.inventory.insertStack(this.iPlayerInventory.removeExtrasStack(i));
-        }
-        this.iPlayerInventory.setContentChanged();
-        for(int i = 9; i < this.inventory.size(); i++) {
-            ItemStack stack = this.inventory.getStack(i);
-            if (stack.isEmpty()) emptySlots++;
-            else stacks.add(stack);
-        }
-        this.sortingType.sort(stacks, ascending);
-        for(int i = 0; i < emptySlots; i++) {
-            stacks.add(ItemStack.EMPTY);
-        }
-        for(int i = 0; i < stacks.size(); i++) {
-            this.inventory.setStack(i + (i > 26 ? 14 : 9), stacks.get(i));
-        }
-        this.iPlayerInventory.setContentChanged();
-        this.swapInventory(this.page);
     }
 
     @SuppressWarnings("ConstantValue")
@@ -174,7 +143,7 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
 
     @Inject(method = "removed", at = @At(value = "HEAD"))
     public void resetInventory(CallbackInfo ci) {
-        this.swapInventory(this.page);
+        this.iPlayerInventory.swapInventory(this.page);
     }
 
     @Inject(method = "render", at = @At(value = "HEAD"))
@@ -191,21 +160,6 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
             this.functionButton.setMessage(Text.of("Sorting"));
         } else {
             this.functionButton.setMessage(Text.of("Page " + page + "/" + (this.inventory.size() - 14) / 27));
-        }
-    }
-
-    @Unique
-    public void swapInventory(int page) {
-        if(page > 1) {
-            int startIndex = 27 * (page - 2);
-            ArrayList<ItemStack> stack;
-            stack = new ArrayList<>(((IPlayerInventory) this.inventory).getMainExtras()
-                    .subList(startIndex, startIndex + 27));
-            for(int i = 0; i < 27; i++) {
-                this.inventory.setStack(startIndex + i + 41, this.inventory.getStack(i + 9));
-                this.inventory.setStack(i + 9, stack.get(i));
-            }
-            ((IPlayerInventory) this.inventory).setContentChanged();
         }
     }
 }

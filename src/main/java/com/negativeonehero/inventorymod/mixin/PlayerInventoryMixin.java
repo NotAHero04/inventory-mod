@@ -2,8 +2,13 @@ package com.negativeonehero.inventorymod.mixin;
 
 import com.google.common.collect.ImmutableList;
 import com.negativeonehero.inventorymod.ExtendableItemStackDefaultedList;
+import com.negativeonehero.inventorymod.SortingType;
 import com.negativeonehero.inventorymod.impl.IPlayerInventory;
-import net.minecraft.client.MinecraftClient;
+import com.negativeonehero.inventorymod.network.Packets;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventory;
@@ -11,6 +16,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.crash.CrashException;
@@ -21,7 +27,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 @Mixin(PlayerInventory.class)
 public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventory {
@@ -46,20 +54,24 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     public int selectedSlot;
     @Shadow
     protected abstract boolean canStackAddMore(ItemStack existingStack, ItemStack stack);
+    @Shadow
+    public abstract boolean insertStack(ItemStack stack);
     @Unique
     private boolean needsToSync = true;
-    @Shadow @Final @Mutable
-    private List<DefaultedList<ItemStack>> combinedInventory;
 
     @Shadow public abstract ItemStack removeStack(int slot);
 
+    @Shadow public abstract void markDirty();
+
+    @Mutable
+    @Shadow @Final private List<DefaultedList<ItemStack>> combinedInventory;
     @Unique
     private int contentChanged = 0;
 
     @Inject(method = "<init>", at = @At(value = "TAIL"))
     public void constructor(PlayerEntity player, CallbackInfo ci) {
         this.mainExtras = ExtendableItemStackDefaultedList.ofSize(0, ItemStack.EMPTY);
-        this.combinedInventory = ImmutableList.of(this.main, this.armor, this.offHand);
+        this.combinedInventory = ImmutableList.of(this.main, this.armor, this.offHand, this.mainExtras);
     }
 
     /* The inventory is rearranged for extra slots in the `main` part
@@ -75,29 +87,21 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
      */
     @Overwrite
     public int getEmptySlot() {
-        int emptySlot = this.getEmptySlotFromIndex(0);
-        if(emptySlot == -1) {
-            for (int k = 0; k < 27; k++) {
-                this.mainExtras.add(ItemStack.EMPTY);
-            }
-            return this.getEmptySlot();
+        int i = 0;
+        for(ItemStack stack : main) {
+            if(stack.isEmpty()) return i;
+            i++;
         }
-        return emptySlot;
-    }
-
-    @Unique
-    public int getEmptySlotFromIndex(int index) {
-        for(int i = index; i < 36; ++i) {
-            if (this.main.get(i).isEmpty()) {
-                return i;
-            }
+        i += 5; // We don't check slot 36-40
+        for(ItemStack stack : mainExtras) {
+            if(stack.isEmpty()) return i;
+            i++;
         }
-        for(int i = index - 36; i < this.mainExtras.size(); i++) {
-            if(this.mainExtras.get(i).isEmpty()) {
-                return i + 36;
-            }
+        for (int k = 0; k < 27; k++) {
+            this.mainExtras.add(ItemStack.EMPTY);
+            this.needsToSync = true;
         }
-        return -1;
+        return this.getEmptySlot();
     }
 
     /**
@@ -337,13 +341,13 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
 
     // A very hacky way to force the inventory to always sync
     @Inject(method = "updateItems", at = @At(value = "TAIL"))
-    public void syncInventories(CallbackInfo ci) throws InterruptedException {
+    public void syncInventories(CallbackInfo ci) {
         if(this.needsToSync && this.player instanceof ServerPlayerEntity) {
-            // Fixes race condition upon rejoining a world... by simply waiting
-            while(MinecraftClient.getInstance().player == null) Thread.sleep(100);
-            ((IPlayerInventory) MinecraftClient.getInstance().player.inventory).setMainExtras(this.mainExtras);
-            for(int i = 0; i < 36; i++)
-                MinecraftClient.getInstance().player.inventory.setStack(i, this.getStack(i));
+            PacketByteBuf buf = PacketByteBufs.create();
+            buf.writeInt(this.mainExtras.size());
+            for(ItemStack stack : this.mainExtras) buf.writeItemStack(stack);
+            ServerPlayNetworking.send((ServerPlayerEntity) this.player, Packets.UPDATE_EXTRA_SLOTS_PACKET_ID, buf);
+            this.markDirty();
             this.needsToSync = false;
         }
     }
@@ -363,7 +367,9 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     public ItemStack removeExtrasStack(int slot) { return this.removeStack(slot + 41); }
 
     @Unique
-    public void setContentChanged() { this.contentChanged++; }
+    public void setContentChanged() {
+        this.contentChanged++;
+    }
 
     @Unique
     public void setMainExtras(ExtendableItemStackDefaultedList mainExtras1) { this.mainExtras = mainExtras1; }
@@ -372,10 +378,70 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     public ExtendableItemStackDefaultedList getMainExtras() {return this.mainExtras; }
 
     @Unique
+    public List<ItemStack> getCombinedMainNoHotbar() {
+        return Stream.concat(this.main.subList(9, 36).stream(), this.mainExtras.stream()).toList();
+    }
+
+    @Unique
     public int getLastEmptySlot() {
-        int ret = 0;
-        int a = 0;
-        while((a = this.getEmptySlotFromIndex(a + 1)) != -1) ret = a;
-        return ret;
+        for(int i = this.size(); i >= 0; i--) {
+            if(this.getStack(i).isEmpty()) return i;
+        }
+        return -1;
+    }
+
+    @Unique
+    public void swapInventory(int page) {
+        if(page > 1) {
+            int startIndex = 27 * (page - 2);
+            ArrayList<ItemStack> stack;
+            stack = new ArrayList<>(this.getMainExtras()
+                    .subList(startIndex, startIndex + 27));
+            for(int i = 0; i < 27; i++) {
+                this.setStack(startIndex + i + 41, this.getStack(i + 9));
+                this.setStack(i + 9, stack.get(i));
+            }
+            this.setContentChanged();
+        }
+        if(this.player instanceof ClientPlayerEntity) {
+            PacketByteBuf buf = PacketByteBufs.create();
+            buf.writeInt(page);
+            ClientPlayNetworking.send(Packets.SWAP_PACKET_ID, buf);
+        }
+    }
+
+    @Unique
+    public void sort(boolean ascending, int page, SortingType sortingType) {
+        this.swapInventory(page);
+        ArrayList<ItemStack> stacks = new ArrayList<>();
+        int emptySlots = 0;
+        for(int i = this.main.size() - 1; i >= 9; i--) {
+            this.insertStack(this.removeStack(i));
+        }
+        this.setContentChanged();
+        for(int i = this.getMainExtras().size() - 1; i >= 0; i--) {
+            this.insertStack(this.removeExtrasStack(i));
+        }
+        this.setContentChanged();
+        for(ItemStack stack : this.getCombinedMainNoHotbar()) {
+            if (stack.isEmpty()) emptySlots++;
+            else stacks.add(stack);
+        }
+        sortingType.sort(stacks, ascending);
+        for(int i = 0; i < emptySlots; i++) {
+            stacks.add(ItemStack.EMPTY);
+        }
+        for(int i = 0; i < stacks.size(); i++) {
+            this.setStack(i + (i > 26 ? 14 : 9), stacks.get(i));
+        }
+        this.setContentChanged();
+        this.swapInventory(page);
+        if(this.player instanceof ClientPlayerEntity) {
+            PacketByteBuf buf = PacketByteBufs.create();
+            buf.writeBoolean(ascending);
+            buf.writeInt(page);
+            buf.writeInt(sortingType.ordinal());
+            ClientPlayNetworking.send(Packets.SORT_PACKET_ID, buf);
+        }
     }
 }

@@ -17,7 +17,7 @@ public enum SortingType {
             .thenComparing(stack -> stack.getName().getString()),
             Text.of("Sort by ID"));
     private final Comparator<ItemStack> comparator;
-    private static final SortingType[] types = values();
+    public static final SortingType[] types = values();
     public final Text message;
 
     SortingType(Comparator<ItemStack> comparator, Text message) {
