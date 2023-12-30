@@ -374,6 +374,9 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     }
 
     @Unique
+    public void needsToSync() { this.needsToSync = true; }
+
+    @Unique
     public void setMainExtras(ExtendableItemStackDefaultedList mainExtras1) { this.mainExtras = mainExtras1; }
 
     @Unique

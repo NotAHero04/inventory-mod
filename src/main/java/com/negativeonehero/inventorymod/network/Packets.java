@@ -10,6 +10,8 @@ import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Identifier;
 
+import java.util.ArrayList;
+
 public class Packets {
     public static final Identifier UPDATE_EXTRA_SLOTS_PACKET_ID =
             new Identifier("inventorymod", "update_extra_slots");
@@ -20,6 +22,10 @@ public class Packets {
     public static void initClientPackets() {
         ClientPlayNetworking.registerGlobalReceiver(UPDATE_EXTRA_SLOTS_PACKET_ID, (client, handler, buf, responseSender) -> {
             int extraSlots = buf.readInt();
+            ArrayList<ItemStack> stacks = new ArrayList<>();
+            for(int i = 0; i < extraSlots; i++) {
+                stacks.add(i, buf.readItemStack());
+            }
             client.execute(() -> {
                 assert client.player != null;
                 PlayerInventory playerInventory = client.player.inventory;
@@ -28,7 +34,7 @@ public class Packets {
                     inventory.getMainExtras().add(ItemStack.EMPTY);
                 }
                 for(int i = 0; i < extraSlots; i++) {
-                    inventory.getMainExtras().set(i, buf.readItemStack());
+                    inventory.getMainExtras().set(i, stacks.get(i));
                 }
             });
         });
@@ -36,13 +42,16 @@ public class Packets {
 
     public static void initServerPackets() {
         ServerPlayNetworking.registerGlobalReceiver(SORT_PACKET_ID, (server, player, handler, buf, responseSender) -> {
+            boolean ascending = buf.readBoolean();
+            int page = buf.readInt();
+            SortingType sortingType = SortingType.types[buf.readInt()];
             server.execute(() -> {
-                ((IPlayerInventory)player.inventory).sort(buf.readBoolean(), buf.readInt(), SortingType.types[buf.readInt()]);
+                ((IPlayerInventory)player.inventory).sort(ascending, page, sortingType);
             });
         });
         ServerPlayNetworking.registerGlobalReceiver(SWAP_PACKET_ID, (server, player, handler, buf, responseSender) -> {
+            int x = buf.readInt();
             server.execute(() -> {
-                int x = buf.readInt();
                 ((IPlayerInventory)player.inventory).swapInventory(x);
             });
         });

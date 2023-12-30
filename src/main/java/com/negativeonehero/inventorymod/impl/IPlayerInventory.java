@@ -15,4 +15,5 @@ public interface IPlayerInventory {
     ItemStack removeExtrasStack(int slot);
     void swapInventory(int page);
     void sort(boolean ascending, int page, SortingType sortingType);
+    void needsToSync();
 }
