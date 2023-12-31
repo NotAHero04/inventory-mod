@@ -13,7 +13,7 @@ import java.util.function.Predicate;
 
 @Mixin(Inventories.class)
 public class InventoriesMixin {
-    @Inject(method = "remove(Lnet/minecraft/inventory/Inventory;Ljava/util/function/Predicate;IZ)I", at = @At("TAIL"))
+    @Inject(method = "method_29234(Lnet/minecraft/inventory/Inventory;Ljava/util/function/Predicate;IZ)I", at = @At("TAIL"))
     private static void sync(Inventory inventory, Predicate<ItemStack> shouldRemove, int maxCount, boolean dryRun, CallbackInfoReturnable<Integer> cir) {
         if (inventory instanceof IPlayerInventory) ((IPlayerInventory) inventory).needsToSync();
     }
