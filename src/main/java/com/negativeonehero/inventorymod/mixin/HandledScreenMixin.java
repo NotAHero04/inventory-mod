@@ -17,14 +17,18 @@ import net.minecraft.registry.Registries;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.text.Text;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Environment(EnvType.CLIENT)
 @Mixin(HandledScreen.class)
 public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen {
+    @Shadow public abstract void tick();
+
     @Unique
     private PlayerInventory inventory;
     @Unique
@@ -44,7 +48,7 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
     @Unique
     private SortingType sortingType = SortingType.COUNT;
     @Unique
-    private int ticksSinceSorting = 0;
+    private int ticksSinceAction = 0;
 
     protected HandledScreenMixin(Text title) {
         super(title);
@@ -117,21 +121,23 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
 
     @Unique
     private void updateTooltip() {
-        if(sorting) {
+        if(this.sorting) {
             this.previousButton.setTooltip(Tooltip.of(Text.of("Sort Descending")));
             this.nextButton.setTooltip(Tooltip.of(Text.of("Sort Ascending")));
+            this.functionButton.setMessage(Text.of("Sorting"));
+
         } else {
             this.previousButton.setTooltip(Tooltip.of(Text.of("Page " + (page - 1))));
             this.nextButton.setTooltip(Tooltip.of(Text.of("Page " + (page + 1))));
+            this.functionButton.setMessage(Text.of("Inventory"));
         }
     }
 
     @SuppressWarnings("ConstantValue")
     @Unique
     private void updateButtons() {
-        boolean visible = (((Object) this) instanceof CreativeInventoryScreen
-                && CreativeInventoryScreen.selectedTab == Registries.ITEM_GROUP.getOrThrow(ItemGroups.INVENTORY))
-                || ((Object) this) instanceof InventoryScreen;
+        boolean visible = !(((Object) this) instanceof CreativeInventoryScreen)
+                || CreativeInventoryScreen.selectedTab == Registries.ITEM_GROUP.getOrThrow(ItemGroups.INVENTORY);
         if(sorting) {
             this.previousButton.visible = visible;
             this.functionButton.visible = visible;
@@ -157,22 +163,24 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
 
     @Inject(method = "tick", at = @At(value = "HEAD"))
     public void tick(CallbackInfo ci) {
-        if(!this.sorting && !this.nextButton.visible && 27 * page + 14 < this.inventory.size()) {
-            this.nextButton.visible = true;
-        }
-        if(!this.previousButton.active) {
-            if(this.ticksSinceSorting >= 20 || !this.sorting) {
-                this.ticksSinceSorting = 0;
+        if(this.ticksSinceAction >= 20) {
+            if(!this.previousButton.active || !this.sorting) {
                 this.previousButton.active = true;
                 this.nextButton.active = true;
-            } else {
-                this.ticksSinceSorting++;
             }
-        }
-        if(sorting) {
-            this.functionButton.setMessage(Text.of("Sorting"));
+            this.ticksSinceAction = 0;
         } else {
-            this.functionButton.setMessage(Text.of("Page " + page + "/" + (this.inventory.size() - 14) / 27));
+            this.ticksSinceAction++;
         }
+        if(!this.sorting && !this.nextButton.visible && 27 * page + 14 < this.inventory.size()) {
+            this.nextButton.visible = true;
+            this.ticksSinceAction = 20;
+        }
+    }
+    @Inject(method = "isClickOutsideBounds(DDIII)Z", at = @At(value = "RETURN"), cancellable = true)
+    protected void isClickOutsideBounds(double mouseX, double mouseY, int left, int top, int button, CallbackInfoReturnable<Boolean> ci) {
+        boolean oldClickOutsideBounds = ci.getReturnValue();
+        boolean clickOutsideButtons = mouseX < 10 || mouseX > 102 || mouseY < 10 || mouseY > 26;
+        if (!oldClickOutsideBounds || !clickOutsideButtons) ci.setReturnValue(false);
     }
 }

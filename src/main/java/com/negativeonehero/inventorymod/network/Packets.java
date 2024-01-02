@@ -50,9 +50,9 @@ public class Packets {
             });
         });
         ServerPlayNetworking.registerGlobalReceiver(SWAP_PACKET_ID, (server, player, handler, buf, responseSender) -> {
-            int x = buf.readInt();
+            int page = buf.readInt();
             server.execute(() -> {
-                ((IPlayerInventory)player.inventory).swapInventory(x);
+                ((IPlayerInventory)player.inventory).swapInventory(page);
             });
         });
     }

@@ -14,10 +14,8 @@
     "ServerPlayNetworkHandlerMixin"
   ],
   "client": [
-    "CreativeInventoryScreenMixin",
     "DrawContextMixin",
-    "HandledScreenMixin",
-    "InventoryScreenMixin"
+    "HandledScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

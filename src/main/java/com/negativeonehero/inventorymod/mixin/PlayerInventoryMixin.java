@@ -26,6 +26,7 @@ import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,40 +34,22 @@ import java.util.stream.Stream;
 
 @Mixin(PlayerInventory.class)
 public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventory {
-    @Final
-    @Shadow
-    @Mutable
-    public DefaultedList<ItemStack> main;
-    @Final
-    @Shadow
-    @Mutable
-    public DefaultedList<ItemStack> armor;
-    @Final
-    @Shadow
-    @Mutable
-    public DefaultedList<ItemStack> offHand;
-    @Unique
-    public ExtendableItemStackDefaultedList mainExtras;
-    @Final
-    @Shadow
-    public PlayerEntity player;
-    @Shadow
-    public int selectedSlot;
-    @Shadow
-    protected abstract boolean canStackAddMore(ItemStack existingStack, ItemStack stack);
-    @Shadow
-    public abstract boolean insertStack(ItemStack stack);
-    @Unique
-    private boolean needsToSync = true;
-
+    @Shadow @Mutable public DefaultedList<ItemStack> main;
+    @Final @Shadow @Mutable public DefaultedList<ItemStack> armor;
+    @Final @Shadow @Mutable public DefaultedList<ItemStack> offHand;
+    @Final @Shadow public PlayerEntity player;
+    @Shadow public int selectedSlot;
+    @Shadow protected abstract boolean canStackAddMore(ItemStack existingStack, ItemStack stack);
+    @Shadow public abstract boolean insertStack(ItemStack stack);
+    @Shadow protected abstract int addStack(ItemStack stack);
     @Shadow public abstract ItemStack removeStack(int slot);
-
+    @Shadow protected abstract int addStack(int slot, ItemStack stack);
     @Shadow public abstract void markDirty();
+    @Shadow @Mutable public List<DefaultedList<ItemStack>> combinedInventory;
 
-    @Mutable
-    @Shadow @Final private List<DefaultedList<ItemStack>> combinedInventory;
-    @Unique
-    private int contentChanged = 0;
+    @Unique public ExtendableItemStackDefaultedList mainExtras;
+    @Unique private boolean needsToSync = true;
+    @Unique private int contentChanged = 0;
 
     @Inject(method = "<init>", at = @At(value = "TAIL"))
     public void constructor(PlayerEntity player, CallbackInfo ci) {
@@ -220,53 +203,12 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
         }
     }
 
-    /**
-     * @author
-     * @reason
-     */
-    @Overwrite
-    private int addStack(ItemStack stack) {
-        // Fix duping while picking items on swapping inventories
+    @Inject(method = "addStack(Lnet/minecraft/item/ItemStack;)I", at = @At("HEAD"), cancellable = true)
+    public void addStackFix(ItemStack stack, CallbackInfoReturnable<Integer> cir) {
         if(this.contentChanged > 0) {
             this.contentChanged--;
-            return this.addStack(stack);
+            cir.setReturnValue(this.addStack(stack));
         }
-        int i = this.getOccupiedSlotWithRoomForStack(stack);
-        if (i == -1) {
-            i = this.getEmptySlot();
-        }
-
-        return i == -1 ? stack.getCount() : this.addStack(i, stack);
-    }
-
-    /**
-     * @author
-     * @reason
-     */
-    @Overwrite
-    private int addStack(int slot, ItemStack stack) {
-        Item item = stack.getItem();
-        int i = stack.getCount();
-        ItemStack itemStack = this.getStack(slot);
-        if (itemStack.isEmpty()) {
-            itemStack = new ItemStack(item, 0);
-            if (stack.hasNbt()) {
-                assert stack.getNbt() != null;
-                itemStack.setNbt(stack.getNbt().copy());
-            }
-
-            this.setStack(slot, itemStack);
-        }
-
-        int j = Math.min(i, itemStack.getMaxCount() - itemStack.getCount());
-        j = Math.min(j, this.getMaxCountPerStack() - itemStack.getCount());
-
-        if (j != 0) {
-            i -= j;
-            itemStack.increment(j);
-            itemStack.setBobbingAnimationTime(5);
-        }
-        return i;
     }
 
     // Technically removeStack() can also cause duping, but it's impossible to recreate
@@ -352,13 +294,9 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
         }
     }
 
-    /**
-     * @author
-     * @reason
-     */
-    @Overwrite
-    public int size() {
-        return this.main.size() + this.armor.size() + this.offHand.size() + this.mainExtras.size();
+    @Inject(method = "size", at = @At("TAIL"), cancellable = true)
+    public void size(CallbackInfoReturnable<Integer> cir) {
+        cir.setReturnValue(this.main.size() + this.armor.size() + this.offHand.size() + this.mainExtras.size());
     }
 
     // Interface: IPlayerInventory
@@ -375,9 +313,6 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     public void needsToSync() { this.needsToSync = true; }
 
     @Unique
-    public void setMainExtras(ExtendableItemStackDefaultedList mainExtras1) { this.mainExtras = mainExtras1; }
-
-    @Unique
     public ExtendableItemStackDefaultedList getMainExtras() {return this.mainExtras; }
 
     @Unique
@@ -386,15 +321,12 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     }
 
     @Unique
-    public int getLastEmptySlot() {
-        for(int i = this.size(); i >= 0; i--) {
-            if(this.getStack(i).isEmpty()) return i;
-        }
-        return -1;
-    }
-
-    @Unique
     public void swapInventory(int page) {
+        if(this.player instanceof ClientPlayerEntity) {
+            PacketByteBuf buf = PacketByteBufs.create();
+            buf.writeInt(page);
+            ClientPlayNetworking.send(Packets.SWAP_PACKET_ID, buf);
+        }
         if(page > 1) {
             int startIndex = 27 * (page - 2);
             ArrayList<ItemStack> stack;
@@ -406,15 +338,17 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
             }
             this.setContentChanged();
         }
-        if(this.player instanceof ClientPlayerEntity) {
-            PacketByteBuf buf = PacketByteBufs.create();
-            buf.writeInt(page);
-            ClientPlayNetworking.send(Packets.SWAP_PACKET_ID, buf);
-        }
     }
 
     @Unique
     public void sort(boolean ascending, int page, SortingType sortingType) {
+        if(this.player instanceof ClientPlayerEntity) {
+            PacketByteBuf buf = PacketByteBufs.create();
+            buf.writeBoolean(ascending);
+            buf.writeInt(page);
+            buf.writeInt(sortingType.ordinal());
+            ClientPlayNetworking.send(Packets.SORT_PACKET_ID, buf);
+        }
         this.swapInventory(page);
         ArrayList<ItemStack> stacks = new ArrayList<>();
         int emptySlots = 0;
@@ -439,12 +373,5 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
         }
         this.setContentChanged();
         this.swapInventory(page);
-        if(this.player instanceof ClientPlayerEntity) {
-            PacketByteBuf buf = PacketByteBufs.create();
-            buf.writeBoolean(ascending);
-            buf.writeInt(page);
-            buf.writeInt(sortingType.ordinal());
-            ClientPlayNetworking.send(Packets.SORT_PACKET_ID, buf);
-        }
     }
 }

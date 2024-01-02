@@ -19,8 +19,6 @@ import java.util.Objects;
 @Mixin(DrawContext.class)
 public abstract class DrawContextMixin {
 
-    @Shadow public abstract int drawText(TextRenderer textRenderer, Text text, int x, int y, int color, boolean shadow);
-
     @Unique
     private String formatDouble(double number, int decimalPlaces) {
         DecimalFormat df = new DecimalFormat("#." + StringUtils.repeat('#', decimalPlaces));
