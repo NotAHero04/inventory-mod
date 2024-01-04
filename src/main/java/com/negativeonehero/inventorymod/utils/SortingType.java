@@ -1,4 +1,4 @@
-package com.negativeonehero.inventorymod;
+package com.negativeonehero.inventorymod.utils;
 
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;

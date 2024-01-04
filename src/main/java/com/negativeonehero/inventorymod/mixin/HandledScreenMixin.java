@@ -1,6 +1,6 @@
 package com.negativeonehero.inventorymod.mixin;
 
-import com.negativeonehero.inventorymod.SortingType;
+import com.negativeonehero.inventorymod.utils.SortingType;
 import com.negativeonehero.inventorymod.impl.IPlayerInventory;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -8,7 +8,6 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.ingame.CreativeInventoryScreen;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
-import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.entity.player.PlayerInventory;

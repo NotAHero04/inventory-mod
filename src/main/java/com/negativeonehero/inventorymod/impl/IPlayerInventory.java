@@ -1,7 +1,7 @@
 package com.negativeonehero.inventorymod.impl;
 
-import com.negativeonehero.inventorymod.ExtendableItemStackDefaultedList;
-import com.negativeonehero.inventorymod.SortingType;
+import com.negativeonehero.inventorymod.utils.ExtendableItemStackDefaultedList;
+import com.negativeonehero.inventorymod.utils.SortingType;
 import net.minecraft.item.ItemStack;
 
 import java.util.List;

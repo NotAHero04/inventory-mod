@@ -1,4 +1,4 @@
-package com.negativeonehero.inventorymod;
+package com.negativeonehero.inventorymod.utils;
 
 import com.google.common.collect.Lists;
 import net.minecraft.item.ItemStack;

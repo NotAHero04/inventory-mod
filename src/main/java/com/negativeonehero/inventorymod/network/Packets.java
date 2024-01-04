@@ -1,6 +1,6 @@
 package com.negativeonehero.inventorymod.network;
 
-import com.negativeonehero.inventorymod.SortingType;
+import com.negativeonehero.inventorymod.utils.SortingType;
 import com.negativeonehero.inventorymod.impl.IPlayerInventory;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;

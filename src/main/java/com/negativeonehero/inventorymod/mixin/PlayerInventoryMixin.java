@@ -1,8 +1,8 @@
 package com.negativeonehero.inventorymod.mixin;
 
 import com.google.common.collect.ImmutableList;
-import com.negativeonehero.inventorymod.ExtendableItemStackDefaultedList;
-import com.negativeonehero.inventorymod.SortingType;
+import com.negativeonehero.inventorymod.utils.ExtendableItemStackDefaultedList;
+import com.negativeonehero.inventorymod.utils.SortingType;
 import com.negativeonehero.inventorymod.impl.IPlayerInventory;
 import com.negativeonehero.inventorymod.network.Packets;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -313,7 +313,7 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     public void needsToSync() { this.needsToSync = true; }
 
     @Unique
-    public ExtendableItemStackDefaultedList getMainExtras() {return this.mainExtras; }
+    public ExtendableItemStackDefaultedList getMainExtras() { return this.mainExtras; }
 
     @Unique
     public List<ItemStack> getCombinedMainNoHotbar() {
