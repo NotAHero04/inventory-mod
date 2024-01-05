@@ -20,6 +20,9 @@
     ],
     "main": [
       "com.negativeonehero.inventorymod.InventoryMod"
+    ],
+    "modmenu": [
+      "com.negativeonehero.inventorymod.ModMenuIntegration"
     ]
   },
   "mixins": [
@@ -29,5 +32,9 @@
   "depends": {
     "fabricloader": ">=0.15.0",
     "minecraft": ">=1.20"
+  },
+  "suggests": {
+    "modmenu": "*",
+    "cloth-config": "*"
   }
 }

@@ -1,6 +1,7 @@
 package com.negativeonehero.inventorymod;
 
 import com.negativeonehero.inventorymod.network.Packets;
+import com.negativeonehero.inventorymod.utils.InventoryModConfig;
 import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +17,7 @@ public class InventoryMod implements ModInitializer {
 		// Proceed with mild caution.
 
 		LOGGER.info("Mom, look! Inventory Mod 0.9.0-beta.3 is loading!");
+		InventoryModConfig.init();
 		Packets.initServerPackets();
 	}
 }
