@@ -19,7 +19,8 @@ public class ModMenuIntegration implements ModMenuApi {
             category.addEntry(builder.entryBuilder()
                     .startBooleanToggle(Text.of("Enable BigInteger support"), InventoryModConfig.bigInteger)
                     .setTooltip(Text.of("""
-                            Enable even larger stack size, up to 2^(2^31-1)
+                            Enable even larger stack size,
+                            theoretically up to 2^(2^31-2)
                             which is 646.5 million digits long!
                             Performance may be degraded.
                             (NOT YET IMPLEMENTED)"""))

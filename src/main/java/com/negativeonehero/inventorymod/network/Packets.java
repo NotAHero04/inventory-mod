@@ -1,5 +1,6 @@
 package com.negativeonehero.inventorymod.network;
 
+import com.negativeonehero.inventorymod.impl.IScreenHandler;
 import com.negativeonehero.inventorymod.utils.SortingType;
 import com.negativeonehero.inventorymod.impl.IPlayerInventory;
 import net.fabricmc.api.EnvType;
@@ -49,11 +50,11 @@ public class Packets {
                 ((IPlayerInventory)player.inventory).sort(ascending, page, sortingType);
             });
         });
-        ServerPlayNetworking.registerGlobalReceiver(SWAP_PACKET_ID, (server, player, handler, buf, responseSender) -> {
+        ServerPlayNetworking.registerGlobalReceiver(SWAP_PACKET_ID, ((server, player, handler, buf, responseSender) -> {
             int page = buf.readInt();
             server.execute(() -> {
-                ((IPlayerInventory)player.inventory).swapInventory(page);
+                ((IScreenHandler)player.currentScreenHandler).swapTrackedSlots(page, false);
             });
-        });
+        }));
     }
 }
