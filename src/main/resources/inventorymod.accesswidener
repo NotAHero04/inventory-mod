@@ -1,16 +1,10 @@
 accessWidener v2 named
+mutable field net/minecraft/entity/player/PlayerInventory main Lnet/minecraft/util/collection/DefaultedList;
 accessible field net/minecraft/entity/player/PlayerInventory combinedInventory Ljava/util/List;
+mutable field net/minecraft/entity/player/PlayerInventory combinedInventory Ljava/util/List;
 accessible field net/minecraft/util/collection/DefaultedList delegate Ljava/util/List;
+mutable field net/minecraft/util/collection/DefaultedList delegate Ljava/util/List;
 accessible field net/minecraft/util/collection/DefaultedList initialElement Ljava/lang/Object;
 accessible field net/minecraft/entity/player/PlayerEntity inventory Lnet/minecraft/entity/player/PlayerInventory;
 accessible field net/minecraft/client/gui/screen/ingame/CreativeInventoryScreen selectedTab Lnet/minecraft/item/ItemGroup;
 accessible field net/minecraft/item/ItemGroups INVENTORY Lnet/minecraft/registry/RegistryKey;
-accessible field net/minecraft/screen/ScreenHandler trackedStacks Lnet/minecraft/util/collection/DefaultedList;
-accessible field net/minecraft/screen/ScreenHandler previousTrackedStacks Lnet/minecraft/util/collection/DefaultedList;
-accessible field net/minecraft/screen/slot/Slot index I
-mutable field net/minecraft/entity/player/PlayerInventory main Lnet/minecraft/util/collection/DefaultedList;
-mutable field net/minecraft/entity/player/PlayerInventory combinedInventory Ljava/util/List;
-mutable field net/minecraft/util/collection/DefaultedList delegate Ljava/util/List;
-mutable field net/minecraft/screen/ScreenHandler trackedStacks Lnet/minecraft/util/collection/DefaultedList;
-mutable field net/minecraft/screen/ScreenHandler previousTrackedStacks Lnet/minecraft/util/collection/DefaultedList;
-mutable field net/minecraft/screen/slot/Slot index I
