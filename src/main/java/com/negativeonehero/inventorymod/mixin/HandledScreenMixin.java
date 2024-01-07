@@ -1,7 +1,8 @@
 package com.negativeonehero.inventorymod.mixin;
 
-import com.negativeonehero.inventorymod.utils.SortingType;
 import com.negativeonehero.inventorymod.impl.IPlayerInventory;
+import com.negativeonehero.inventorymod.impl.IScreenHandler;
+import com.negativeonehero.inventorymod.utils.SortingType;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.gui.DrawContext;
@@ -15,6 +16,7 @@ import net.minecraft.item.ItemGroups;
 import net.minecraft.registry.Registries;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.text.Text;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -28,6 +30,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen {
     @Shadow public abstract void tick();
 
+    @Shadow @Final protected T handler;
     @Unique
     private PlayerInventory inventory;
     @Unique
@@ -94,26 +97,23 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
 
     @Unique
     private void update(boolean next) {
-        if (sorting) {
+        if (this.sorting) {
             this.iPlayerInventory.sort(next, this.page, this.sortingType);
             this.previousButton.active = false;
             this.nextButton.active = false;
         } else {
             if(next) {
-                if (this.page > 1) this.iPlayerInventory.swapInventory(this.page);
                 this.page++;
                 this.previousButton.visible = true;
                 if (this.page >= this.inventory.size() / 27) this.nextButton.visible = false;
-                this.iPlayerInventory.swapInventory(this.page);
             } else {
-                this.iPlayerInventory.swapInventory(this.page);
                 this.page--;
                 if (this.page < this.inventory.size() / 27) {
                     this.nextButton.visible = true;
                     if (this.page <= 1) this.previousButton.visible = false;
-                    else this.iPlayerInventory.swapInventory(this.page);
                 }
             }
+            ((IScreenHandler) this.handler).swapTrackedSlots(this.page, true);
             this.updateTooltip();
         }
     }
@@ -152,7 +152,7 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
 
     @Inject(method = "removed", at = @At(value = "HEAD"))
     public void resetInventory(CallbackInfo ci) {
-        this.iPlayerInventory.swapInventory(this.page);
+        ((IScreenHandler) this.handler).swapTrackedSlots(1, true);
     }
 
     @Inject(method = "render", at = @At(value = "HEAD"))

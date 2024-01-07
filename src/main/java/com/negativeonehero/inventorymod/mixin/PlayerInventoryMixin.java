@@ -321,26 +321,6 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     }
 
     @Unique
-    public void swapInventory(int page) {
-        if(this.player instanceof ClientPlayerEntity) {
-            PacketByteBuf buf = PacketByteBufs.create();
-            buf.writeInt(page);
-            ClientPlayNetworking.send(Packets.SWAP_PACKET_ID, buf);
-        }
-        if(page > 1) {
-            int startIndex = 27 * (page - 2);
-            ArrayList<ItemStack> stack;
-            stack = new ArrayList<>(this.getMainExtras()
-                    .subList(startIndex, startIndex + 27));
-            for(int i = 0; i < 27; i++) {
-                this.setStack(startIndex + i + 41, this.getStack(i + 9));
-                this.setStack(i + 9, stack.get(i));
-            }
-            this.setContentChanged();
-        }
-    }
-
-    @Unique
     public void sort(boolean ascending, int page, SortingType sortingType) {
         if(this.player instanceof ClientPlayerEntity) {
             PacketByteBuf buf = PacketByteBufs.create();
@@ -349,13 +329,11 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
             buf.writeInt(sortingType.ordinal());
             ClientPlayNetworking.send(Packets.SORT_PACKET_ID, buf);
         }
-        this.swapInventory(page);
         ArrayList<ItemStack> stacks = new ArrayList<>();
         int emptySlots = 0;
         for(int i = this.main.size() - 1; i >= 9; i--) {
             this.insertStack(this.removeStack(i));
         }
-        this.setContentChanged();
         for(int i = this.getMainExtras().size() - 1; i >= 0; i--) {
             this.insertStack(this.removeExtrasStack(i));
         }
@@ -372,6 +350,5 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
             this.setStack(i + (i > 26 ? 14 : 9), stacks.get(i));
         }
         this.setContentChanged();
-        this.swapInventory(page);
     }
 }
