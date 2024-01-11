@@ -1,6 +1,5 @@
 package com.negativeonehero.inventorymod.client;
 
-import com.negativeonehero.inventorymod.network.Packets;
 import net.fabricmc.api.ClientModInitializer;
 
 public class InventoryModClient implements ClientModInitializer {
@@ -9,6 +8,5 @@ public class InventoryModClient implements ClientModInitializer {
      */
     @Override
     public void onInitializeClient() {
-        Packets.initClientPackets();
     }
 }

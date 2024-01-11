@@ -1,20 +1,21 @@
 package com.negativeonehero.inventorymod.mixin;
 
 import com.negativeonehero.inventorymod.impl.IScreenHandler;
-import com.negativeonehero.inventorymod.network.Packets;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import com.negativeonehero.inventorymod.utils.PlayerUtility;
+import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
-import net.minecraft.network.PacketByteBuf;
 import net.minecraft.screen.PlayerScreenHandler;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.slot.Slot;
 import net.minecraft.util.collection.DefaultedList;
+import org.apache.commons.lang3.Range;
 import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
+import java.util.List;
 import java.util.Set;
+import java.util.stream.IntStream;
 
 @Mixin(ScreenHandler.class)
 public class ScreenHandlerMixin implements IScreenHandler {
@@ -121,16 +122,16 @@ public class ScreenHandlerMixin implements IScreenHandler {
 
     @Unique
     public void swapTrackedSlots(int page, boolean client) {
-        if(client) {
-            PacketByteBuf buf = PacketByteBufs.create();
-            buf.writeInt(page);
-            ClientPlayNetworking.send(Packets.SWAP_PACKET_ID, buf);
-        }
         // Only PlayerScreenHandler has a slot after inventory slots for offhand
-        int slotAdjustment = ((ScreenHandler) (Object) this) instanceof PlayerScreenHandler ? 1 : 0;
-        int newSlotIndex = (page - 1) * 27 + 9;
-        for (int i = 26, j = ((ScreenHandler) (Object) this).slots.size() - (10 + slotAdjustment); i >= 0; i--, j--) {
-            ((ScreenHandler) (Object) this).slots.get(j).index = newSlotIndex + i + (page > 1 ? 5 : 0);
-        }
+        List<DefaultedList<Slot>> sList = PlayerUtility.players().stream().map(i -> i.currentScreenHandler.slots).toList();
+        DefaultedList<Slot> cSlots = sList.get(0);
+        DefaultedList<Slot> sSlots = sList.get(1);
+        int slotStart = IntStream.range(0, sSlots.size()).filter(i -> sSlots.get(i).inventory instanceof PlayerInventory
+                && !Range.between(36, 39).contains(sSlots.get(i).getIndex())).findFirst().orElse(-1);
+        int newSlotIndex = (page - 1) * 27 + (page > 1 ? 14 : 9);
+        IntStream.range(0, 27).parallel().forEachOrdered(i -> {
+            if(((ScreenHandler) (Object) this) instanceof PlayerScreenHandler) cSlots.get(slotStart + i).index = newSlotIndex + i;
+            sSlots.get(slotStart + i).index = newSlotIndex + i;
+        });
     }
 }

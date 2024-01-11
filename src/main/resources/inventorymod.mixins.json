@@ -15,7 +15,8 @@
   ],
   "client": [
     "DrawContextMixin",
-    "HandledScreenMixin"
+    "HandledScreenMixin",
+    "InventoryScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

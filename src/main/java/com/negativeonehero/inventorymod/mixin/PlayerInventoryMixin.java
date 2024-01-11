@@ -4,10 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.negativeonehero.inventorymod.utils.ExtendableItemStackDefaultedList;
 import com.negativeonehero.inventorymod.utils.SortingType;
 import com.negativeonehero.inventorymod.impl.IPlayerInventory;
-import com.negativeonehero.inventorymod.network.Packets;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
@@ -16,12 +13,12 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtList;
-import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.crash.CrashException;
 import net.minecraft.util.crash.CrashReport;
 import net.minecraft.util.crash.CrashReportSection;
+import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -30,6 +27,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 @Mixin(PlayerInventory.class)
@@ -50,6 +48,7 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     @Unique public ExtendableItemStackDefaultedList mainExtras;
     @Unique private boolean needsToSync = true;
     @Unique private int contentChanged = 0;
+    @Unique public ServerPlayerEntity serverPlayer;
 
     @Inject(method = "<init>", at = @At(value = "TAIL"))
     public void constructor(PlayerEntity player, CallbackInfo ci) {
@@ -281,16 +280,26 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
         }
     }
 
-    // A very hacky way to force the inventory to always sync
+    @SuppressWarnings("DataFlowIssue")
     @Inject(method = "updateItems", at = @At(value = "TAIL"))
-    public void syncInventories(CallbackInfo ci) {
-        if(this.needsToSync && this.player instanceof ServerPlayerEntity) {
-            PacketByteBuf buf = PacketByteBufs.create();
-            buf.writeInt(this.mainExtras.size());
-            for(ItemStack stack : this.mainExtras) buf.writeItemStack(stack);
-            ServerPlayNetworking.send((ServerPlayerEntity) this.player, Packets.UPDATE_EXTRA_SLOTS_PACKET_ID, buf);
-            this.markDirty();
-            this.needsToSync = false;
+    public void getPlayersAndSync(CallbackInfo ci) throws InterruptedException {
+        if(this.player instanceof ServerPlayerEntity) {
+            // Get the server player. We do the sync for ourselves
+            if(this.serverPlayer == null) {
+                this.serverPlayer = (ServerPlayerEntity) this.player;
+                while(MinecraftClient.getInstance().player == null) { Thread.sleep(100); }
+                ((IPlayerInventory) MinecraftClient.getInstance().player.inventory)
+                        .setServerPlayer((ServerPlayerEntity) this.player);
+            }
+            if(this.needsToSync) {
+                this.needsToSync = false;
+                ExtendableItemStackDefaultedList sInventory = ((IPlayerInventory)serverPlayer.inventory).getMainExtras();
+                ExtendableItemStackDefaultedList cInventory = ((IPlayerInventory)MinecraftClient.getInstance().player.inventory).getMainExtras();
+                IntStream.range(0, sInventory.size() - cInventory.size()).parallel().forEachOrdered(i -> {
+                    cInventory.add(ItemStack.EMPTY);
+                    cInventory.set(i, sInventory.get(i));
+                });
+            }
         }
     }
 
@@ -321,13 +330,20 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
     }
 
     @Unique
-    public void sort(boolean ascending, int page, SortingType sortingType) {
+    public void setServerPlayer(ServerPlayerEntity player) {
+        if(this.serverPlayer != null) throw new UnsupportedOperationException("The server player has already been retrieved!");
+        else this.serverPlayer = player;
+    }
+
+    @Unique @Nullable
+    public ServerPlayerEntity getServerPlayer() {
+        return this.serverPlayer;
+    }
+
+    @Unique
+    public void sort(boolean ascending, SortingType sortingType) {
         if(this.player instanceof ClientPlayerEntity) {
-            PacketByteBuf buf = PacketByteBufs.create();
-            buf.writeBoolean(ascending);
-            buf.writeInt(page);
-            buf.writeInt(sortingType.ordinal());
-            ClientPlayNetworking.send(Packets.SORT_PACKET_ID, buf);
+            ((IPlayerInventory) this.serverPlayer.inventory).sort(ascending, sortingType);
         }
         ArrayList<ItemStack> stacks = new ArrayList<>();
         int emptySlots = 0;
