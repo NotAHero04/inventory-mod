@@ -129,9 +129,10 @@ public class ScreenHandlerMixin implements IScreenHandler {
         int slotStart = IntStream.range(0, sSlots.size()).filter(i -> sSlots.get(i).inventory instanceof PlayerInventory
                 && !Range.between(36, 39).contains(sSlots.get(i).getIndex())).findFirst().orElse(-1);
         int newSlotIndex = (page - 1) * 27 + (page > 1 ? 14 : 9);
-        IntStream.range(0, 27).parallel().forEachOrdered(i -> {
-            if(((ScreenHandler) (Object) this) instanceof PlayerScreenHandler) cSlots.get(slotStart + i).index = newSlotIndex + i;
+        for (int i = 0; i < 27; i++) {
+            if (((ScreenHandler) (Object) this) instanceof PlayerScreenHandler)
+                cSlots.get(slotStart + i).index = newSlotIndex + i;
             sSlots.get(slotStart + i).index = newSlotIndex + i;
-        });
+        }
     }
 }
