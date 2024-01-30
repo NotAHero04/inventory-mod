@@ -2,4 +2,5 @@ accessWidener v2 named
 accessible field net/minecraft/client/gui/screen/ingame/CreativeInventoryScreen selectedTab Lnet/minecraft/item/ItemGroup;
 accessible field net/minecraft/entity/player/PlayerEntity inventory Lnet/minecraft/entity/player/PlayerInventory;
 accessible field net/minecraft/screen/slot/Slot index I
+accessible field net/minecraft/screen/ScreenHandler trackedStacks Lnet/minecraft/util/collection/DefaultedList;
 mutable field net/minecraft/screen/slot/Slot index I
