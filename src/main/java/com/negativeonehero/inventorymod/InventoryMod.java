@@ -15,7 +15,7 @@ public class InventoryMod implements ModInitializer {
 		// However, some things (like resources) may still be uninitialized.
 		// Proceed with mild caution.
 
-		LOGGER.info("Mom, look! Inventory Mod 0.9.0-beta.3 is loading!");
+		LOGGER.info("Mom, look! Inventory Mod is loading!");
 		InventoryModConfig.init();
 	}
 }
