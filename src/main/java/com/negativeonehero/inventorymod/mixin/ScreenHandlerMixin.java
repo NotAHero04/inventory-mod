@@ -119,7 +119,6 @@ public class ScreenHandlerMixin implements IScreenHandler {
         return stack.getCount() / slots.size();
     }
 
-
     @Unique
     public void swapTrackedSlots(int page, boolean client) {
         // Only PlayerScreenHandler has a slot after inventory slots for offhand
@@ -128,16 +127,16 @@ public class ScreenHandlerMixin implements IScreenHandler {
         ScreenHandler sHandler = sList.get(1);
         DefaultedList<Slot> cSlots = cHandler.slots;
         DefaultedList<Slot> sSlots = sHandler.slots;
-        int slotStart = IntStream.range(0, sSlots.size()).filter(i -> sSlots.get(i).inventory instanceof PlayerInventory
+        int oldSlotIndex = IntStream.range(0, sSlots.size()).filter(i -> sSlots.get(i).inventory instanceof PlayerInventory
                 && !Range.between(36, 39).contains(sSlots.get(i).getIndex())).findFirst().orElse(-1);
         int newSlotIndex = (page - 1) * 27 + (page > 1 ? 14 : 9);
         for (int i = 0; i < 27; i++) {
             if (((ScreenHandler) (Object) this) instanceof PlayerScreenHandler) {
-                cSlots.get(slotStart + i).index = newSlotIndex + i;
-                cHandler.trackedStacks.set(slotStart + i, cSlots.get(slotStart + i).inventory.getStack(newSlotIndex + i));
+                cSlots.get(oldSlotIndex + i).index = newSlotIndex + i;
+                cHandler.trackedStacks.set(oldSlotIndex + i, cSlots.get(oldSlotIndex + i).inventory.getStack(newSlotIndex + i));
             }
-            sSlots.get(slotStart + i).index = newSlotIndex + i;
-            sHandler.trackedStacks.set(slotStart + i, sSlots.get(slotStart + i).inventory.getStack(newSlotIndex + i));
+            sSlots.get(oldSlotIndex + i).index = newSlotIndex + i;
+            sHandler.trackedStacks.set(oldSlotIndex + i, sSlots.get(oldSlotIndex + i).inventory.getStack(newSlotIndex + i));
         }
     }
 }
